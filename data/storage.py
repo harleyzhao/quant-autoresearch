@@ -49,6 +49,32 @@ class Storage:
         with sqlite3.connect(self.db_path) as conn:
             long.to_sql("factors", conn, if_exists="append", index=False)
 
+    def load_all_factors(self, start: str = None, end: str = None) -> pd.DataFrame:
+        """Load all factors in wide format, optionally filtered by date range."""
+        with sqlite3.connect(self.db_path) as conn:
+            if start and end:
+                long = pd.read_sql(
+                    "SELECT * FROM factors WHERE date>=? AND date<?",
+                    conn, params=(start, end),
+                )
+            else:
+                long = pd.read_sql("SELECT * FROM factors", conn)
+        if long.empty:
+            return long
+        return long.pivot(index=["code", "date"], columns="factor_name",
+                          values="factor_value").reset_index()
+
+    def load_all_daily(self, start: str = None, end: str = None) -> pd.DataFrame:
+        """Load all daily data, optionally filtered by date range."""
+        with sqlite3.connect(self.db_path) as conn:
+            if start and end:
+                return pd.read_sql(
+                    "SELECT * FROM daily WHERE date>=? AND date<?",
+                    conn, params=(start, end),
+                )
+            else:
+                return pd.read_sql("SELECT * FROM daily", conn)
+
     def load_factors(self, date: str) -> pd.DataFrame:
         with sqlite3.connect(self.db_path) as conn:
             long = pd.read_sql(
