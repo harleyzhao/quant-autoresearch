@@ -31,9 +31,16 @@ class MarketTimer:
         return X
 
     def train(self, features: np.ndarray, labels: np.ndarray):
-        X, y = self._make_sequences(features, labels)
+        # 自动检测：如果输入已经是 3D (n_samples, seq_len, n_features)，跳过序列化
+        if features.ndim == 3:
+            X = features.astype(np.float32)
+            y = labels[:len(X)]
+        else:
+            X, y = self._make_sequences(features, labels)
         dataset = TensorDataset(torch.tensor(X), torch.tensor(y, dtype=torch.long))
-        loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        use_pin = self.device.type == "cuda"
+        loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True,
+                            pin_memory=use_pin)
 
         self.model.train()
         for epoch in range(self.epochs):
@@ -65,6 +72,18 @@ class MarketTimer:
             output = torch.softmax(self.model(x), dim=1)
             prob, cls = output.max(dim=1)
             return int(cls.item()), float(prob.item())
+
+    def batch_predict_proba(self, features_list: list) -> list:
+        """批量推理：一次性预测多个样本，大幅提升 GPU 利用率"""
+        if not features_list:
+            return []
+        batch = np.stack([f[-self.seq_len:] for f in features_list]).astype(np.float32)
+        x = torch.tensor(batch).to(self.device)
+        self.model.eval()
+        with torch.no_grad():
+            output = torch.softmax(self.model(x), dim=1)
+            probs, classes = output.max(dim=1)
+        return [(int(c.item()), float(p.item())) for c, p in zip(classes, probs)]
 
     @staticmethod
     def to_position(pred_class: int, confidence: float, threshold: float = 0.6) -> float:

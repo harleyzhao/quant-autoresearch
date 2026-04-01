@@ -1,55 +1,43 @@
-# 择时策略自动进化
+# 个股日频择时策略自动进化
 
 ## 你的任务
-你是一个量化研究 agent。你的目标是不断优化 `train.py` 中的 ALSTM 择时模型，提高验证集上的择时夏普比率。
+优化 ALSTM 个股日频择时模型，目标是在选股基础上通过日频波段交易扩大收益。
+当前基线：验证集夏普 0.74，但回撤 -77% 太大，需优先降低回撤。
 
-## 环境
-- 你运行在 Mac 上，代码在 /Users/harleyzhao/cuda-2/autoresearch/market_timing/
-- 训练在远程 Windows(5090 GPU) 上执行
-- 远程连接: sshpass -p 'sandyzhou75' ssh -o StrictHostKeyChecking=no root@192.168.8.172
-- 远程 Python: $env:USERPROFILE\miniconda3\envs\quant\python.exe
-- 远程项目: C:\Users\root.harleyhomePC\cuda-2
+## 可用模型 API
 
-## 规则
-1. **只修改 train.py**，不要修改其他文件
-2. 每次只尝试一个改动方向
-3. 修改 train.py 后，执行以下步骤：
-
-   a. 同步到 Windows:
-   ```bash
-   sshpass -p 'sandyzhou75' scp -o StrictHostKeyChecking=no /Users/harleyzhao/cuda-2/autoresearch/market_timing/train.py root@192.168.8.172:"C:/Users/root.harleyhomePC/cuda-2/autoresearch/market_timing/train.py"
-   ```
-
-   b. 远程执行:
-   ```bash
-   sshpass -p 'sandyzhou75' ssh -o StrictHostKeyChecking=no root@192.168.8.172 "cd C:\Users\root.harleyhomePC\cuda-2\autoresearch\market_timing; & \"$env:USERPROFILE\miniconda3\envs\quant\python.exe\" -W ignore train.py 2>&1"
-   ```
-
-   c. 从输出中找 VAL_SHARPE=xxx
-
-4. 如果新的夏普 > `best_sharpe.txt` 中的值：
-   - 更新 `best_sharpe.txt`
-   - `git add train.py best_sharpe.txt && git commit -m "improve: <描述改动> sharpe=<新值>"`
-5. 否则：`git checkout -- train.py`
-6. 继续
+### MarketTimer (models/alstm_model.py)
+```python
+class MarketTimer:
+    def __init__(self, input_size, seq_len=60, hidden_size=128, num_layers=2,
+                 num_classes=3, dropout=0.3, lr=1e-3, epochs=50, batch_size=64):
+    def train(self, features: np.ndarray, labels: np.ndarray):
+        # 接受 2D (n_days, n_features) 或 3D (n_samples, seq_len, n_features)
+    def predict_proba(self, features: np.ndarray) -> tuple[int, float]:
+        # 输入 (seq_len, n_features)，返回 (类别, 置信度)
+```
 
 ## 可以尝试的方向
-- 修改 ALSTM 结构（层数、hidden_size、dropout）
-- 更换 Attention 类型（additive → dot-product → multi-head）
-- 增减输入特征（市场宽度、波动率、资金流）
-- 调整序列长度（30/60/90天）
-- 修改仓位映射阈值
-- 调整学习率、batch_size、训练轮数
-- 添加学习率调度器
-- 尝试不同的标签定义（涨跌幅分位数、趋势判定）
-- 减少过拟合（正则化、早停、数据增强）
+- 调整模型参数: hidden_size(64/128/256), num_layers(1/2), dropout(0.3/0.5/0.7), batch_size(256/512/1024)
+- 调整序列长度 SEQ_LEN(10/20/30/40)
+- 改进特征工程（增减技术指标）
+- 调整标签定义（阈值、未来收益天数）
+- 调整买卖信号的置信度阈值
+- 加入止损/止盈逻辑降低回撤
+- 加入持仓时间限制（最多持N天）
+- 改进回测逻辑
 
 ## 约束
-- 训练集：2018-01 ~ 2023-12
-- 验证集：2024-01 ~ 2024-06
-- 测试集（不可触碰）：2024-07 之后
-- GPU 训练
-- 当前过拟合（训练集0.60 vs 验证集-0.53），优先解决
+- **必须使用 ALSTM 模型（MarketTimer 类）**
+- **A股 T+1，买入当天不能卖出**
+- **仓位只能 0 或 1（持有或不持有），不可做空**
+- 训练集：2021-01 ~ 2023-12，验证集：2024-01 ~ 2024-06
+- 每次只改一个方向
+- 必须输出完整可运行的 train.py
 
-## 当前最优
-查看 `best_sharpe.txt`
+## 已知陷阱
+- MarketTimer.train() 接受 2D 或 3D 输入，自动检测维度
+- 不要用 `pd.cut().astype(int)`，用手动赋值
+- 不要用 `fillna(method='ffill')`，用 `.ffill()`
+- 不要给 MarketTimer 传不支持的参数（如 early_stopping）
+- 当前回撤 -77% 太大，优先解决
