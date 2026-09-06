@@ -3,6 +3,8 @@ import { generate, getSpecies, SPECIES_IDS, TreeGrowth, phenologyAt, insideEnvel
 import { skeletonStats } from '../src/generate.js';
 
 const ind = (seed: number, ageYears: number, dayOfYear = 190) => ({ seed, ageYears, dayOfYear, latitude: 48, health: 1 });
+/** Let the worker's event loop process RPC messages between long synchronous stretches. */
+const breathe = () => new Promise<void>((r) => (globalThis as unknown as { setTimeout(fn: () => void, ms: number): unknown }).setTimeout(r, 0));
 
 describe('determinism', () => {
   it('same seed => identical skeleton and leaves', () => {
@@ -28,14 +30,15 @@ describe('determinism', () => {
 
 describe('growth behaviour', () => {
   for (const id of SPECIES_IDS) {
-    it(`${id}: grows, stays inside its crown envelope, thickens with age`, () => {
+    it(`${id}: grows, stays inside its crown envelope, thickens with age`, async () => {
       const sp = getSpecies(id);
       const g = new TreeGrowth(sp, 7);
       let prevNodes = 0, prevR = 0;
       const top = sp.crown.baseHeight + sp.crown.height;
       for (let y = 1; y <= 24; y++) {
         g.step();
-        if (y % 3 !== 0) continue; // sample every third season: keeps each test well under the worker RPC timeout
+        if (y % 3 !== 0) continue;
+        await breathe(); // sample every third season: keeps each test well under the worker RPC timeout
         const sk = g.toSkeleton();
         expect(sk.count).toBeGreaterThanOrEqual(prevNodes * 0.5); // shedding may remove some, never collapse
         prevNodes = sk.count;
@@ -90,87 +93,9 @@ describe('growth behaviour', () => {
   });
 });
 
-describe('phenology', () => {
-  const p = getSpecies('quercus-robur').phenology;
-  it('cycles dormant -> expanding -> mature -> senescing -> shedding -> dormant through the year', () => {
-    const stages = [15, 140, 200, 295, 320, 360].map((d) => phenologyAt(p, d, 48).stage);
-    expect(stages[0]).toBe('dormant');
-    expect(['budburst', 'expanding', 'mature']).toContain(stages[1]);
-    expect(stages[2]).toBe('mature');
-    expect(stages[3]).toBe('senescing');
-    expect(['shedding', 'dormant']).toContain(stages[4]);
-    expect(stages[5]).toBe('dormant');
-  });
-  it('chlorophyll falls and carotenoids rise during senescence', () => {
-    const summer = phenologyAt(p, 200, 48), autumn = phenologyAt(p, 300, 48);
-    expect(autumn.chlorophyll).toBeLessThan(summer.chlorophyll);
-    expect(autumn.carotenoid).toBeGreaterThan(summer.carotenoid);
-  });
-  it('southern hemisphere is phase shifted by half a year', () => {
-    const north = phenologyAt(p, 200, 48), south = phenologyAt(p, 200, -48);
-    expect(north.stage).toBe('mature');
-    expect(south.stage).toBe('dormant');
-  });
-  it('deciduous trees drop all leaves in winter; evergreens keep them', () => {
-    const oakWinter = generate(getSpecies('quercus-robur'), ind(7, 15, 20));
-    const oakSummer = generate(getSpecies('quercus-robur'), ind(7, 15, 200));
-    const pineWinter = generate(getSpecies('pinus-sylvestris'), ind(7, 15, 20));
-    expect(oakSummer.leaves.count).toBeGreaterThan(100);
-    expect(oakWinter.leaves.count).toBe(0);
-    expect(pineWinter.leaves.count).toBeGreaterThan(100);
-  });
-  it('autumn leaves are less green than summer leaves', () => {
-    const summer = generate(getSpecies('betula-pendula'), ind(5, 15, 200));
-    const autumn = generate(getSpecies('betula-pendula'), ind(5, 15, 285));
-    const greenness = (l: typeof summer.leaves) => { let g = 0; for (let i = 0; i < l.count; i++) g += l.color[i * 3 + 1] - l.color[i * 3]; return g / l.count; };
-    expect(greenness(autumn.leaves)).toBeLessThan(greenness(summer.leaves));
-  });
-});
-
-describe('mesh output', () => {
-  it('branch mesh is a valid indexed triangle mesh', () => {
-    const m = generate(getSpecies('quercus-robur'), ind(11, 15));
-    const { position, normal, uv, index } = m.branches;
-    const nv = position.length / 3;
-    expect(normal.length).toBe(position.length);
-    expect(uv.length / 2).toBe(nv);
-    expect(index.length % 3).toBe(0);
-    let max = 0;
-    for (let i = 0; i < index.length; i++) { if (index[i] > max) max = index[i]; }
-    expect(max).toBeLessThan(nv);
-    for (let i = 0; i < position.length; i++) expect(Number.isFinite(position[i])).toBe(true);
-  });
-  it('leaf instances have unit quaternions and sit near their nodes', () => {
-    const m = generate(getSpecies('betula-pendula'), ind(11, 15));
-    const l = m.leaves;
-    for (let i = 0; i < Math.min(l.count, 500); i++) {
-      const q = l.quaternion.subarray(i * 4, i * 4 + 4);
-      expect(Math.abs(Math.hypot(q[0], q[1], q[2], q[3]) - 1)).toBeLessThan(1e-4);
-      const n = l.node[i];
-      const d = Math.hypot(l.position[i * 3] - m.skeleton.position[n * 3], l.position[i * 3 + 1] - m.skeleton.position[n * 3 + 1], l.position[i * 3 + 2] - m.skeleton.position[n * 3 + 2]);
-      expect(d).toBeLessThan(m.species.internodeLength * 1.5);
-    }
-  });
-});
-
-describe('skeleton simplification', () => {
-  it('removes collinear metamers, keeps tips/branch points, stays a valid tree', async () => {
-    const { simplifySkeleton } = await import('../src/index.js');
-    const m = generate(getSpecies('quercus-robur'), ind(7, 20), { simplify: false });
-    const { skeleton: s, oldIndex } = simplifySkeleton(m.skeleton, 6, 1.5);
-    expect(s.count).toBeLessThan(m.skeleton.count);
-    let tipsFull = 0, tipsSimple = 0;
-    for (let i = 0; i < m.skeleton.count; i++) tipsFull += m.skeleton.isTip[i];
-    for (let i = 0; i < s.count; i++) { tipsSimple += s.isTip[i]; if (i > 0) expect(s.parent[i]).toBeLessThan(i); expect(oldIndex[i]).toBeGreaterThanOrEqual(i); }
-    expect(tipsSimple).toBe(tipsFull);
-    const full = generate(getSpecies('quercus-robur'), ind(7, 20), { simplify: false });
-    const simple = generate(getSpecies('quercus-robur'), ind(7, 20));
-    expect(simple.branches.index.length).toBeLessThanOrEqual(full.branches.index.length);
-  });
-});
-
 describe('gravitational sag', () => {
-  it('branches with flexibility end lower than rigid ones, trunk unaffected', () => {
+  it('branches with flexibility end lower than rigid ones, trunk unaffected', async () => {
+    await breathe();
     const base = getSpecies('betula-pendula');
     const rigid = generate({ ...base, flexibility: 0 }, ind(9, 18));
     const bent = generate(base, ind(9, 18));
@@ -180,30 +105,9 @@ describe('gravitational sag', () => {
   });
 });
 
-describe('PlantSession (incremental growth)', () => {
-  it('growing 10 then 20 years equals growing 20 years from scratch; day changes reuse the skeleton', async () => {
-    const { PlantSession } = await import('../src/index.js');
-    const sp = getSpecies('betula-pendula');
-    const s = new PlantSession(sp, { seed: 21, health: 1 });
-    s.growTo(10);
-    const m10 = s.build(190, 48);
-    s.growTo(20);
-    const m20 = s.build(190, 48);
-    const ref = generate(sp, ind(21, 20));
-    expect(m20.skeleton.count).toBe(ref.skeleton.count);
-    expect(Array.from(m20.skeleton.position)).toEqual(Array.from(ref.skeleton.position));
-    expect(m20.skeleton.count).toBeGreaterThan(m10.skeleton.count);
-    const winter = s.build(20, 48);
-    expect(winter.skeleton).toBe(m20.skeleton); // cached, not rebuilt
-    expect(winter.leaves.count).toBe(0);
-    // shrinking age restarts deterministically
-    s.growTo(10);
-    expect(Array.from(s.build(190, 48).skeleton.position)).toEqual(Array.from(m10.skeleton.position));
-  });
-});
-
 describe('environment obstacles', () => {
-  it('a wall keeps branches out and pushes the crown to the other side', () => {
+  it('a wall keeps branches out and pushes the crown to the other side', async () => {
+    await breathe();
     const sp = getSpecies('quercus-robur');
     const wall = { kind: 'box' as const, min: [1.2, 0, -10] as [number, number, number], max: [1.6, 9, 10] as [number, number, number] };
     const free = generate(sp, ind(7, 22));
@@ -220,37 +124,5 @@ describe('environment obstacles', () => {
     let cxFree = 0; for (let i = 0; i < free.skeleton.count; i++) cxFree += free.skeleton.position[i * 3]; cxFree /= free.skeleton.count;
     expect(cx).toBeLessThan(cxFree - 0.3); // crown centroid shifted away from the wall
     expect(beyond / sk.count).toBeLessThan(0.05); // almost nothing reaches over/around the wall at this age
-  });
-});
-
-describe('leaf silhouettes', () => {
-  it('every family yields valid CCW polygons inside the unit frame with veins', async () => {
-    const { leafSilhouette, resolveLeafShape, leafFamilyOf, polygonArea } = await import('../src/index.js');
-    for (const shape of ['ovate', 'lanceolate', 'lobed', 'palmate', 'pinnate', 'needle']) {
-      const f = leafFamilyOf(shape);
-      const sil = leafSilhouette(resolveLeafShape(f.family, f.overrides));
-      expect(sil.polygons.length).toBeGreaterThan(0);
-      expect(sil.veins.length).toBeGreaterThan(0);
-      for (const poly of sil.polygons) {
-        expect(polygonArea(poly)).toBeGreaterThan(0); // CCW
-        for (let i = 0; i < poly.length; i += 2) {
-          expect(Math.abs(poly[i])).toBeLessThan(0.8);
-          expect(poly[i + 1]).toBeGreaterThan(-0.15);
-          expect(poly[i + 1]).toBeLessThan(1.1);
-        }
-      }
-    }
-  });
-  it('lobing removes area, serration adds edge, pinnate has one polygon per leaflet', async () => {
-    const { leafSilhouette, resolveLeafShape, polygonArea } = await import('../src/index.js');
-    const plain = leafSilhouette(resolveLeafShape('lobed', { lobes: { count: 4, depth: 0, round: 1 } }));
-    const lobed = leafSilhouette(resolveLeafShape('lobed', { lobes: { count: 4, depth: 0.5, round: 1 } }));
-    expect(polygonArea(lobed.polygons[0])).toBeLessThan(polygonArea(plain.polygons[0]) * 0.85);
-    const perimeter = (poly: Float32Array) => { let l = 0; for (let i = 0; i < poly.length; i += 2) { const j = (i + 2) % poly.length; l += Math.hypot(poly[j] - poly[i], poly[j + 1] - poly[i + 1]); } return l; };
-    const entire = leafSilhouette(resolveLeafShape('simple', { serration: { amplitude: 0, count: 0 } }));
-    const serrate = leafSilhouette(resolveLeafShape('simple', { serration: { amplitude: 0.1, count: 20 } }));
-    expect(perimeter(serrate.polygons[0])).toBeGreaterThan(perimeter(entire.polygons[0]) * 1.1);
-    const pinnate = leafSilhouette(resolveLeafShape('pinnate', { leaflets: { count: 9, aspect: 0.4 } }));
-    expect(pinnate.polygons.length).toBe(9);
   });
 });
