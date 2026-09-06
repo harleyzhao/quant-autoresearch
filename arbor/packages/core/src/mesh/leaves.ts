@@ -28,7 +28,8 @@ export function buildLeaves(sk: Skeleton, sp: SpeciesParams, ph: PhenologyState,
     const len = Math.hypot(ax, ay, az) || 1;
     const tx = ax / len, ty = ay / len, tz = az / len;
     const shootAge = Math.min(currentYear - sk.birthYear[i], lf.maxShootAge);
-    const count = lf.perNode;
+    // tips carry the short-shoot cluster of the season: more leaves than a plain internode
+    const count = sk.isTip[i] ? Math.round(lf.perNode * 1.6) : lf.perNode;
     for (let k = 0; k < count; k++, leafId++) {
       // position along the internode
       const t = (k + 0.5) / count;

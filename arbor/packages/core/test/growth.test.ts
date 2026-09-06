@@ -150,3 +150,19 @@ describe('mesh output', () => {
     }
   });
 });
+
+describe('skeleton simplification', () => {
+  it('removes collinear metamers, keeps tips/branch points, stays a valid tree', async () => {
+    const { simplifySkeleton } = await import('../src/index.js');
+    const m = generate(getSpecies('quercus-robur'), ind(7, 20), { simplify: false });
+    const { skeleton: s, oldIndex } = simplifySkeleton(m.skeleton, 6, 1.5);
+    expect(s.count).toBeLessThan(m.skeleton.count);
+    let tipsFull = 0, tipsSimple = 0;
+    for (let i = 0; i < m.skeleton.count; i++) tipsFull += m.skeleton.isTip[i];
+    for (let i = 0; i < s.count; i++) { tipsSimple += s.isTip[i]; if (i > 0) expect(s.parent[i]).toBeLessThan(i); expect(oldIndex[i]).toBeGreaterThanOrEqual(i); }
+    expect(tipsSimple).toBe(tipsFull);
+    const full = generate(getSpecies('quercus-robur'), ind(7, 20), { simplify: false });
+    const simple = generate(getSpecies('quercus-robur'), ind(7, 20));
+    expect(simple.branches.index.length).toBeLessThanOrEqual(full.branches.index.length);
+  });
+});

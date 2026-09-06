@@ -8,5 +8,6 @@ export { phenologyAt, dailyTemperature, gddToDay, leafColor } from './growth/phe
 export { buildBranchMesh } from './mesh/branches.js';
 export type { BranchMeshOptions } from './mesh/branches.js';
 export { buildLeaves } from './mesh/leaves.js';
+export { simplifySkeleton } from './mesh/simplify.js';
 export { SPECIES, SPECIES_IDS, getSpecies, applyOverrides } from './species/index.js';
 export { generate, defaultIndividual } from './generate.js';

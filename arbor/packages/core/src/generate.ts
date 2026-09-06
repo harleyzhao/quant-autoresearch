@@ -3,6 +3,7 @@ import { TreeGrowth, type GrowthOptions } from './growth/grow.js';
 import { phenologyAt } from './growth/phenology.js';
 import { buildBranchMesh, type BranchMeshOptions } from './mesh/branches.js';
 import { buildLeaves } from './mesh/leaves.js';
+import { simplifySkeleton } from './mesh/simplify.js';
 import { applyOverrides } from './species/index.js';
 
 const perf = (globalThis as unknown as { performance?: { now(): number } }).performance;
@@ -15,6 +16,8 @@ export function defaultIndividual(seed = 1): IndividualParams {
 export interface GenerateOptions {
   growth?: GrowthOptions;
   mesh?: BranchMeshOptions;
+  /** Collapse collinear metamers before meshing (default on, 6°). Pass false to mesh every metamer. */
+  simplify?: { angleDeg?: number; maxLength?: number } | false;
 }
 
 /** Full pipeline: grow -> skeleton -> branch mesh + leaves + phenology + stats. */
@@ -30,7 +33,8 @@ export function generate(speciesIn: SpeciesParams, individual: IndividualParams,
   const t1 = now();
 
   const phenology = phenologyAt(sp.phenology, individual.dayOfYear, individual.latitude);
-  const branches = buildBranchMesh(skeleton, opts.mesh);
+  const meshSkeleton = opts.simplify === false ? skeleton : simplifySkeleton(skeleton, opts.simplify?.angleDeg ?? 6, opts.simplify?.maxLength ?? 1.5).skeleton;
+  const branches = buildBranchMesh(meshSkeleton, opts.mesh);
   const leaves = buildLeaves(skeleton, sp, phenology, g.year, individual.seed);
   const t2 = now();
 
