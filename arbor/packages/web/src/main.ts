@@ -153,7 +153,7 @@ let currentModel: PlantModel | null = null;
 /** Leaf card in the XZ plane: petiole at the origin, tip at +Z*length, blade normal +Y. */
 function leafGeometry(sp: SpeciesParams): THREE.BufferGeometry {
   const L = sp.leaf.length, W = sp.leaf.width;
-  if (sp.leaf.shape === 'needle') return needleTuftGeometry(L, Math.max(W, 0.003));
+  if (sp.leaf.shape === 'needle') return needleBrushGeometry(L, Math.max(W, 0.003), sp.internodeLength * 0.6);
   // outline as [x, z] pairs, counter-clockwise when viewed from +Y
   const pts: [number, number][] = [[0, 0], [-0.30 * W, 0.18 * L], [-0.50 * W, 0.42 * L], [-0.38 * W, 0.72 * L], [0, L], [0.38 * W, 0.72 * L], [0.50 * W, 0.42 * L], [0.30 * W, 0.18 * L]];
   const pos = new Float32Array(pts.length * 3), nrm = new Float32Array(pts.length * 3), uv = new Float32Array(pts.length * 2);
@@ -169,25 +169,26 @@ function leafGeometry(sp: SpeciesParams): THREE.BufferGeometry {
 }
 
 /**
- * Conifer "leaf" instance = a tuft of needles fanning out of one point around +Z (the shoot's
- * radial direction), so a needle-bearing metamer reads as a brush rather than as 1 mm specks.
+ * Conifer "leaf" instance = a bottlebrush: needles fanning out along +Z (the shoot axis) over
+ * `brushLen`, so a needle-bearing shoot reads as a dense brush rather than as 1 mm specks.
  */
-function needleTuftGeometry(L: number, W: number, count = 9): THREE.BufferGeometry {
+function needleBrushGeometry(L: number, W: number, brushLen: number, count = 56): THREE.BufferGeometry {
   const pos: number[] = [], nrm: number[] = [], uv: number[] = [], idx: number[] = [];
   const golden = Math.PI * (3 - Math.sqrt(5));
   for (let k = 0; k < count; k++) {
-    const spread = 0.55; // half-angle of the fan (rad)
-    const a = k * golden, r = spread * Math.sqrt((k + 0.5) / count);
-    // needle axis: rotate +Z by r toward direction a in the XY plane
-    const ax = Math.sin(r) * Math.cos(a), ay = Math.sin(r) * Math.sin(a), az = Math.cos(r);
-    // width direction perpendicular to the axis and roughly in-plane
-    let wx = -ay, wy = ax, wz = 0; const wl = Math.hypot(wx, wy, wz) || 1; wx /= wl; wy /= wl;
+    const a = k * golden;
+    const z0 = (k / count) * brushLen;
+    const tilt = 0.95 + 0.25 * Math.sin(k * 1.7); // ~55° off the axis, slightly varied
+    // needle axis
+    const ax = Math.sin(tilt) * Math.cos(a), ay = Math.sin(tilt) * Math.sin(a), az = Math.cos(tilt);
+    // width direction: tangential
+    const wx = -Math.sin(a), wy = Math.cos(a), wz = 0;
     const nx = ay * wz - az * wy, ny = az * wx - ax * wz, nz = ax * wy - ay * wx;
     const base = pos.length / 3;
-    const len = L * (0.8 + 0.4 * ((k * 7) % 5) / 4);
-    pos.push(wx * W / 2, wy * W / 2, wz * W / 2, -wx * W / 2, -wy * W / 2, -wz * W / 2,
-      -wx * W / 4 + ax * len, -wy * W / 4 + ay * len, -wz * W / 4 + az * len, wx * W / 4 + ax * len, wy * W / 4 + ay * len, wz * W / 4 + az * len);
-    for (let v = 0; v < 4; v++) { nrm.push(nx, ny, nz); }
+    const len = L * (0.85 + 0.3 * ((k * 7) % 5) / 4);
+    pos.push(wx * W / 2, wy * W / 2, z0 + wz * W / 2, -wx * W / 2, -wy * W / 2, z0 - wz * W / 2,
+      -wx * W / 4 + ax * len, -wy * W / 4 + ay * len, z0 + az * len, wx * W / 4 + ax * len, wy * W / 4 + ay * len, z0 + az * len);
+    for (let v = 0; v < 4; v++) nrm.push(nx, ny, nz);
     uv.push(1, 0, 0, 0, 0, 1, 1, 1);
     idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
@@ -306,7 +307,34 @@ worker.onmessage = (ev: MessageEvent<GenerateResponse>) => {
   if ('error' in ev.data) { statusEl.textContent = 'generation failed:\n' + ev.data.error; console.error(ev.data.error); }
   else { setModel(ev.data.model, reframeNext); reframeNext = false; }
   if (dirty) { dirty = false; send(); }
+  else if (playing) advanceTimelapse();
 };
+
+// ---------------------------------------------------------------------------
+// Timelapse: step age (years) or day-of-year after each generation completes
+// ---------------------------------------------------------------------------
+let playing: 'age' | 'season' | null = null;
+function advanceTimelapse(): void {
+  if (playing === 'age') {
+    if (state.ageYears >= 60) { playing = null; refreshPlayButtons(); return; }
+    state.ageYears += 1;
+  } else if (playing === 'season') {
+    state.dayOfYear = state.dayOfYear >= 365 ? 1 : Math.min(365, state.dayOfYear + 4);
+  }
+  pane.refresh();
+  writeHash();
+  send();
+}
+function togglePlay(mode: 'age' | 'season'): void {
+  playing = playing === mode ? null : mode;
+  if (playing === 'age' && state.ageYears >= 60) state.ageYears = 1;
+  refreshPlayButtons();
+  if (playing && !inFlight) advanceTimelapse();
+}
+function refreshPlayButtons(): void {
+  playAgeBtn.title = playing === 'age' ? '■ Stop growth' : '▶ Play growth (1 → 60 y)';
+  playSeasonBtn.title = playing === 'season' ? '■ Stop seasons' : '▶ Play seasons';
+}
 worker.onerror = (e) => { statusEl.textContent = 'worker error: ' + e.message; console.error(e); };
 
 function requestGenerate(): void {
@@ -345,6 +373,10 @@ ov.addBinding(state, 'lateralBudProbability', { min: 0, max: 1, step: 0.01 });
 pane.on('change', requestGenerate);
 
 pane.addButton({ title: 'Randomize seed' }).on('click', () => { state.seed = Math.floor(Math.random() * 1_000_000); pane.refresh(); });
+const playAgeBtn = pane.addButton({ title: '▶ Play growth (1 → 60 y)' });
+playAgeBtn.on('click', () => togglePlay('age'));
+const playSeasonBtn = pane.addButton({ title: '▶ Play seasons' });
+playSeasonBtn.on('click', () => togglePlay('season'));
 pane.addButton({ title: 'Frame tree' }).on('click', () => { if (currentModel) frameCamera(currentModel); });
 pane.addButton({ title: 'Export glTF' }).on('click', exportGltf);
 pane.addButton({ title: 'Screenshot PNG' }).on('click', screenshot);

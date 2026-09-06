@@ -20,25 +20,68 @@ export interface GenerateOptions {
   simplify?: { angleDeg?: number; maxLength?: number } | false;
 }
 
-/** Full pipeline: grow -> skeleton -> branch mesh + leaves + phenology + stats. */
-export function generate(speciesIn: SpeciesParams, individual: IndividualParams, opts: GenerateOptions = {}): PlantModel {
+function resolveSpecies(speciesIn: SpeciesParams, individual: Pick<IndividualParams, 'health' | 'overrides'>): SpeciesParams {
   const species = applyOverrides(speciesIn, individual.overrides);
   const health = Math.max(0.05, Math.min(1, individual.health ?? 1));
-  const sp: SpeciesParams = health === 1 ? species : { ...species, resourceScale: species.resourceScale * health };
+  return health === 1 ? species : { ...species, resourceScale: species.resourceScale * health };
+}
 
-  const t0 = now();
-  const g = new TreeGrowth(sp, individual.seed, opts.growth);
-  g.grow(Math.max(1, Math.round(individual.ageYears)));
-  const skeleton = g.toSkeleton();
-  const t1 = now();
+/**
+ * A growing plant that can be advanced year by year and rebuilt for any day of the year.
+ * Growing forward reuses the simulation state (incremental), so an age slider costs one season per
+ * step instead of a full re-simulation; a day-of-year change rebuilds only leaves and phenology.
+ * Results are bit-identical to `generate()` for the same (species, seed, age).
+ */
+export class PlantSession {
+  readonly species: SpeciesParams;
+  readonly seed: number;
+  private growth: TreeGrowth;
+  private opts: GenerateOptions;
+  private skeletonCache: { age: number; skeleton: Skeleton; branches: ReturnType<typeof buildBranchMesh> } | null = null;
 
-  const phenology = phenologyAt(sp.phenology, individual.dayOfYear, individual.latitude);
-  const meshSkeleton = opts.simplify === false ? skeleton : simplifySkeleton(skeleton, opts.simplify?.angleDeg ?? 6, opts.simplify?.maxLength ?? 1.5).skeleton;
-  const branches = buildBranchMesh(meshSkeleton, opts.mesh);
-  const leaves = buildLeaves(skeleton, sp, phenology, g.year, individual.seed);
-  const t2 = now();
+  constructor(speciesIn: SpeciesParams, individual: Pick<IndividualParams, 'seed' | 'health' | 'overrides'>, opts: GenerateOptions = {}) {
+    this.species = resolveSpecies(speciesIn, individual);
+    this.seed = individual.seed;
+    this.opts = opts;
+    this.growth = new TreeGrowth(this.species, this.seed, opts.growth);
+  }
 
-  return { species: sp, individual, skeleton, branches, leaves, phenology, stats: { ...skeletonStats(skeleton, sp), leaves: leaves.count, growthMs: t1 - t0, meshMs: t2 - t1 } };
+  get age(): number { return this.growth.year; }
+
+  /** Advance (or restart and advance) to `ageYears` seasons. Returns wall time spent growing (ms). */
+  growTo(ageYears: number): number {
+    const target = Math.max(1, Math.round(ageYears));
+    const t0 = now();
+    if (target < this.growth.year) { this.growth = new TreeGrowth(this.species, this.seed, this.opts.growth); this.skeletonCache = null; }
+    if (target > this.growth.year) { this.growth.grow(target - this.growth.year); this.skeletonCache = null; }
+    return now() - t0;
+  }
+
+  /** Build meshes and phenology for a day of year at the current age. */
+  build(dayOfYear: number, latitude: number, growthMs = 0): PlantModel {
+    const sp = this.species;
+    const t1 = now();
+    if (!this.skeletonCache || this.skeletonCache.age !== this.growth.year) {
+      const skeleton = this.growth.toSkeleton();
+      const meshSkeleton = this.opts.simplify === false ? skeleton : simplifySkeleton(skeleton, this.opts.simplify?.angleDeg ?? 6, this.opts.simplify?.maxLength ?? 1.5).skeleton;
+      this.skeletonCache = { age: this.growth.year, skeleton, branches: buildBranchMesh(meshSkeleton, this.opts.mesh) };
+    }
+    const { skeleton, branches } = this.skeletonCache;
+    const phenology = phenologyAt(sp.phenology, dayOfYear, latitude);
+    const leaves = buildLeaves(skeleton, sp, phenology, this.growth.year, this.seed);
+    const t2 = now();
+    const individual: IndividualParams = { seed: this.seed, ageYears: this.growth.year, dayOfYear, latitude, health: 1 };
+    return { species: sp, individual, skeleton, branches, leaves, phenology, stats: { ...skeletonStats(skeleton, sp), leaves: leaves.count, growthMs, meshMs: t2 - t1 } };
+  }
+}
+
+/** Full pipeline in one call: grow -> skeleton -> branch mesh + leaves + phenology + stats. */
+export function generate(speciesIn: SpeciesParams, individual: IndividualParams, opts: GenerateOptions = {}): PlantModel {
+  const session = new PlantSession(speciesIn, individual, opts);
+  const growthMs = session.growTo(individual.ageYears);
+  const model = session.build(individual.dayOfYear, individual.latitude, growthMs);
+  model.individual = individual;
+  return model;
 }
 
 export function skeletonStats(sk: Skeleton, sp: SpeciesParams) {

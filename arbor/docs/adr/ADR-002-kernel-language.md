@@ -20,6 +20,17 @@ Measured on the first TS kernel (single thread, Node 22), 60 simulated years:
 At the default viewer age (25 years) generation is 0.7–3 s inside a Worker, which is acceptable for
 P0 but not for the "< 200 ms incremental regrow" target in the plan.
 
+Update after the first algorithmic pass (same machine, 60 simulated years, 60k node budget):
+
+| species | total before | total after | what changed |
+|---|---|---|---|
+| Quercus robur | 11.0 s | 2.7 s | dense-grid marker field (no Map lookups), marker-centric occupancy refresh, perception skipped for buds that have not moved since they last saw no free space, sag settled every 3 seasons |
+| Betula pendula | 13.3 s | 2.5 s | same |
+| Pinus sylvestris | 3.9 s | 2.9 s | same; cone perception of ~6k live tips during years 5–20 is now the dominant cost |
+
+Incremental use (the viewer's normal case) is already inside the target: `PlantSession.growTo(age+1)`
+costs one season (30–150 ms at 20–60k nodes) and a day-of-year change rebuilds only leaves.
+
 ## Decision
 
 1. P0 kernel stays in TypeScript (`packages/core`), pure and DOM-free, so it runs in Node tests,

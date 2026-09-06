@@ -9,7 +9,8 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "dev": "pnpm --filter @arbor/web dev",
-    "smoke": "pnpm --filter @arbor/web smoke"
+    "smoke": "pnpm --filter @arbor/web smoke",
+    "metrics": "pnpm --filter @arbor/core metrics"
   },
   "devDependencies": {
     "typescript": "^5.9.0"

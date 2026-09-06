@@ -2,11 +2,13 @@ import type { SpeciesParams } from '../types.js';
 import quercus from '../../../../species/quercus-robur.json' with { type: 'json' };
 import betula from '../../../../species/betula-pendula.json' with { type: 'json' };
 import pinus from '../../../../species/pinus-sylvestris.json' with { type: 'json' };
+import acer from '../../../../species/acer-platanoides.json' with { type: 'json' };
 
 export const SPECIES: Record<string, SpeciesParams> = {
   [quercus.id]: quercus as SpeciesParams,
   [betula.id]: betula as SpeciesParams,
   [pinus.id]: pinus as SpeciesParams,
+  [acer.id]: acer as SpeciesParams,
 };
 
 export const SPECIES_IDS = Object.keys(SPECIES);

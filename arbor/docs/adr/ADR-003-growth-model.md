@@ -31,6 +31,13 @@ Three families of tree-structure generators were evaluated in the research repor
   - The trunk is always orthotropic; negative gravitropism (weeping) applies to laterals only and
     scales with order.
   - A node budget (`maxNodes`) freezes primary growth when reached; the tree keeps thickening.
+  - Two mechanisms the paper does not have, added after the first renders came out as upright
+    "brooms": (a) gravitational sag, a yearly rigid rotation of every lateral branch about its base by
+    `flexibility · moment / r³`, capped by `sagMax`, so heavy old limbs droop and thin twigs do not;
+    (b) an axis kink, the continuing shoot deflecting away from each new lateral bud (`axisKink`),
+    which breaks up long straight twigs. Both are species parameters.
+  - Lateral shoots are capped at `lateralShootScale` × the leader's max shoot length, and conifers use
+    a separate near-zero `lateralGravitropism` (plagiotropic branches).
 - Neural priors and image-to-parameter fitting (plan §3.2) are P2 and will *produce parameters or
   envelopes for this kernel*, not replace it.
 - The strand-based volumetric model (plan §4) is P1 and consumes the same skeleton: strand counts per

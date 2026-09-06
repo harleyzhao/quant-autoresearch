@@ -1,0 +1,70 @@
+{
+  "id": "acer-platanoides",
+  "name": "Norway Maple",
+  "latinName": "Acer platanoides",
+  "habit": "broadleaf",
+  "apicalControl": 0.5,
+  "resourceScale": 2.8,
+  "internodeLength": 0.24,
+  "maxShootLength": 0.65,
+  "perceptionAngle": 60,
+  "perceptionDistance": 5,
+  "occupancyRadius": 0.9,
+  "branchingAngle": 42,
+  "phyllotaxis": 180,
+  "branchingMode": "alternate",
+  "whorlCount": 0,
+  "lateralBudProbability": 0.5,
+  "budLifespan": 3,
+  "directionInertia": 0.9,
+  "phototropism": 0.8,
+  "gravitropism": 0.15,
+  "lateralShootScale": 0.8,
+  "axisKink": 0.1,
+  "flexibility": 8e-09,
+  "sagMax": 0.4,
+  "noise": 0.3,
+  "maxOrder": 10,
+  "shedThreshold": 0.1,
+  "shedYears": 3,
+  "daVinciExponent": 2.0,
+  "tipRadius": 0.0016,
+  "radialGrowthPerYear": 0.002,
+  "crown": {
+    "shape": "ellipsoid",
+    "height": 13,
+    "width": 12,
+    "baseHeight": 2.4
+  },
+  "leaf": {
+    "shape": "palmate",
+    "length": 0.14,
+    "width": 0.16,
+    "perNode": 4,
+    "maxShootAge": 1,
+    "maxBranchRadius": 0.01,
+    "color": [
+      0.12,
+      0.32,
+      0.07
+    ],
+    "autumnPigment": "orange"
+  },
+  "phenology": {
+    "budburstGDD": 150,
+    "leafExpandDays": 24,
+    "senescenceDay": 275,
+    "senescenceDays": 30,
+    "abscissionDay": 295,
+    "abscissionDays": 28,
+    "evergreen": false
+  },
+  "bark": {
+    "color": [
+      0.36,
+      0.32,
+      0.28
+    ],
+    "roughness": 0.9
+  }
+}

@@ -59,7 +59,8 @@ describe('growth behaviour', () => {
         const y = sk.position[i * 3 + 1];
         if (y < sp.crown.baseHeight) continue;
         crownNodes++;
-        if (insideEnvelope({ ...sp.crown, width: sp.crown.width + 2 * sp.maxShootLength, height: sp.crown.height + sp.maxShootLength }, sk.position[i * 3], y, sk.position[i * 3 + 2])) inside++;
+        // sagging limbs may hang below/outside the envelope, so allow a generous margin
+        if (insideEnvelope({ ...sp.crown, width: sp.crown.width + 3, height: sp.crown.height + 1, baseHeight: sp.crown.baseHeight - 1.5 }, sk.position[i * 3], y, sk.position[i * 3 + 2])) inside++;
       }
       expect(inside / crownNodes).toBeGreaterThan(0.9);
     });
@@ -164,5 +165,38 @@ describe('skeleton simplification', () => {
     const full = generate(getSpecies('quercus-robur'), ind(7, 20), { simplify: false });
     const simple = generate(getSpecies('quercus-robur'), ind(7, 20));
     expect(simple.branches.index.length).toBeLessThanOrEqual(full.branches.index.length);
+  });
+});
+
+describe('gravitational sag', () => {
+  it('branches with flexibility end lower than rigid ones, trunk unaffected', () => {
+    const base = getSpecies('betula-pendula');
+    const rigid = generate({ ...base, flexibility: 0 }, ind(9, 18));
+    const bent = generate(base, ind(9, 18));
+    const meanTipY = (m: typeof rigid) => { let s = 0, c = 0; for (let i = 0; i < m.skeleton.count; i++) if (m.skeleton.isTip[i]) { s += m.skeleton.position[i * 3 + 1]; c++; } return s / c; };
+    expect(meanTipY(bent)).toBeLessThan(meanTipY(rigid));
+    for (let i = 1; i < bent.skeleton.count; i++) expect(bent.skeleton.position[i * 3 + 1]).toBeGreaterThanOrEqual(0.05);
+  });
+});
+
+describe('PlantSession (incremental growth)', () => {
+  it('growing 10 then 20 years equals growing 20 years from scratch; day changes reuse the skeleton', async () => {
+    const { PlantSession } = await import('../src/index.js');
+    const sp = getSpecies('betula-pendula');
+    const s = new PlantSession(sp, { seed: 21, health: 1 });
+    s.growTo(10);
+    const m10 = s.build(190, 48);
+    s.growTo(20);
+    const m20 = s.build(190, 48);
+    const ref = generate(sp, ind(21, 20));
+    expect(m20.skeleton.count).toBe(ref.skeleton.count);
+    expect(Array.from(m20.skeleton.position)).toEqual(Array.from(ref.skeleton.position));
+    expect(m20.skeleton.count).toBeGreaterThan(m10.skeleton.count);
+    const winter = s.build(20, 48);
+    expect(winter.skeleton).toBe(m20.skeleton); // cached, not rebuilt
+    expect(winter.leaves.count).toBe(0);
+    // shrinking age restarts deterministically
+    s.growTo(10);
+    expect(Array.from(s.build(190, 48).skeleton.position)).toEqual(Array.from(m10.skeleton.position));
   });
 });

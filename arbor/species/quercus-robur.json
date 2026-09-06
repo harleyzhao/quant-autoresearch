@@ -28,8 +28,8 @@
   "radialGrowthPerYear": 0.0022,
   "crown": {
     "shape": "spreading",
-    "height": 14,
-    "width": 16,
+    "height": 12,
+    "width": 13,
     "baseHeight": 2.2
   },
   "leaf": {
@@ -62,5 +62,9 @@
       0.2
     ],
     "roughness": 0.95
-  }
+  },
+  "lateralShootScale": 0.85,
+  "axisKink": 0.15,
+  "flexibility": 8e-09,
+  "sagMax": 0.35
 }

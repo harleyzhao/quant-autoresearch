@@ -49,6 +49,6 @@ See `packages/core/src/growth/grow.ts` and ADR-003 for the deviations from Pału
 
 ## Status
 
-P0 (technical validation). Done on day 1: kernel, three species, 17 tests, viewer, export, smoke test,
+P0 (technical validation). Done on day 1: kernel, four species (oak, birch, pine, maple), 19 tests, viewer, export, smoke test,
 CI. Known day-1 issues are listed in `../docs/plant-gen/00-立项书.md` §8 (pine branch habit, whippy twigs, 1–2 s generation). Not yet: strand-based junctions, procedural bark/leaf materials, wind, LOD/impostors, USD.
 Roadmap in the plan document §14.

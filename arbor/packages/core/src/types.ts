@@ -92,6 +92,16 @@ export interface SpeciesParams {
   phototropism: number;
   /** Weight toward +Y (negative for weeping habits). */
   gravitropism: number;
+  /** Gravitropism used by lateral (order ≥ 1) shoots; conifers are plagiotropic (~0). Defaults to gravitropism. */
+  lateralGravitropism?: number;
+  /** Max shoot length of laterals relative to the leader (0..1). */
+  lateralShootScale: number;
+  /** How far the continuing axis kinks away from each new lateral bud (0 = none, 0.15 = typical). */
+  axisKink: number;
+  /** Bending of lateral branches under their own weight: yearly angle = flexibility · moment / r³ (EI-like stiffness). 0 disables. */
+  flexibility: number;
+  /** Cumulative sag cap per branch (rad). */
+  sagMax: number;
   /** Random perturbation weight. */
   noise: number;
   /** Deepest branching order allowed to spawn laterals. */

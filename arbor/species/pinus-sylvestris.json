@@ -34,9 +34,9 @@
   },
   "leaf": {
     "shape": "needle",
-    "length": 0.05,
-    "width": 0.004,
-    "perNode": 5,
+    "length": 0.065,
+    "width": 0.005,
+    "perNode": 3,
     "maxShootAge": 3,
     "maxBranchRadius": 0.009,
     "color": [
@@ -62,5 +62,10 @@
       0.16
     ],
     "roughness": 0.9
-  }
+  },
+  "lateralShootScale": 0.5,
+  "lateralGravitropism": 0.03,
+  "axisKink": 0.0,
+  "flexibility": 6e-09,
+  "sagMax": 0.3
 }

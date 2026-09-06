@@ -29,10 +29,12 @@ export function buildLeaves(sk: Skeleton, sp: SpeciesParams, ph: PhenologyState,
     const tx = ax / len, ty = ay / len, tz = az / len;
     const shootAge = Math.min(currentYear - sk.birthYear[i], lf.maxShootAge);
     // tips carry the short-shoot cluster of the season: more leaves than a plain internode
-    const count = sk.isTip[i] ? Math.round(lf.perNode * 1.6) : lf.perNode;
+    const needle = lf.shape === 'needle';
+    // needles: one bottlebrush instance per ~0.6 internode of shoot, aligned with the shoot
+    const count = needle ? Math.max(1, Math.round((len / (sp.internodeLength * 0.6)) * lf.perNode)) : sk.isTip[i] ? Math.round(lf.perNode * 1.6) : lf.perNode;
     for (let k = 0; k < count; k++, leafId++) {
       // position along the internode
-      const t = (k + 0.5) / count;
+      const t = needle ? k / count : (k + 0.5) / count;
       const x = P[p * 3] + ax * t, y = P[p * 3 + 1] + ay * t, z = P[p * 3 + 2] + az * t;
       // relative canopy height drives exposure -> earlier colouring/drop
       const exposure = height > 0 ? y / height : 1;
@@ -55,7 +57,8 @@ export function buildLeaves(sk: Skeleton, sp: SpeciesParams, ph: PhenologyState,
 
       // orientation: leaf points away from the axis (phyllotactic angle), blade normal biased up (phototropism)
       const phase = k * (sp.phyllotaxis * Math.PI / 180) + rng.next() * 0.6 + hash01(i, 3) * Math.PI * 2;
-      leafQuaternion(tx, ty, tz, phase, sp.leaf.shape === 'needle' ? 0.9 : 0.55 + rng.next() * 0.35, rng.next() * 0.6 - 0.3, q);
+      if (needle) axisQuaternion(tx, ty, tz, hash01(i, 17) * Math.PI * 2, q);
+      else leafQuaternion(tx, ty, tz, phase, 0.55 + rng.next() * 0.35, rng.next() * 0.6 - 0.3, q);
 
       const sizeJitter = 0.75 + 0.5 * hash01(leafId, 5);
       const ageScale = sp.phenology.evergreen ? 1 : 1;
@@ -78,6 +81,24 @@ export function buildLeaves(sk: Skeleton, sp: SpeciesParams, ph: PhenologyState,
 }
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/** Frame whose +Z is the given axis, rolled by `roll` about it. */
+function axisQuaternion(ax: number, ay: number, az: number, roll: number, out: Float32Array): void {
+  let ux: number, uy: number, uz: number;
+  if (Math.abs(ay) < 0.9) { ux = -az; uy = 0; uz = ax; } else { ux = 1; uy = 0; uz = 0; }
+  const d = ux * ax + uy * ay + uz * az; ux -= d * ax; uy -= d * ay; uz -= d * az;
+  const um = Math.hypot(ux, uy, uz) || 1; ux /= um; uy /= um; uz /= um;
+  const vx = ay * uz - az * uy, vy = az * ux - ax * uz, vz = ax * uy - ay * ux;
+  const cr = Math.cos(roll), sr = Math.sin(roll);
+  const xx = ux * cr + vx * sr, xy = uy * cr + vy * sr, xz = uz * cr + vz * sr;
+  const yx = vx * cr - ux * sr, yy = vy * cr - uy * sr, yz = vz * cr - uz * sr;
+  const m00 = xx, m01 = yx, m02 = ax, m10 = xy, m11 = yy, m12 = ay, m20 = xz, m21 = yz, m22 = az;
+  const tr = m00 + m11 + m22;
+  if (tr > 0) { const s = Math.sqrt(tr + 1) * 2; out[3] = 0.25 * s; out[0] = (m21 - m12) / s; out[1] = (m02 - m20) / s; out[2] = (m10 - m01) / s; }
+  else if (m00 > m11 && m00 > m22) { const s = Math.sqrt(1 + m00 - m11 - m22) * 2; out[3] = (m21 - m12) / s; out[0] = 0.25 * s; out[1] = (m01 + m10) / s; out[2] = (m02 + m20) / s; }
+  else if (m11 > m22) { const s = Math.sqrt(1 + m11 - m00 - m22) * 2; out[3] = (m02 - m20) / s; out[0] = (m01 + m10) / s; out[1] = 0.25 * s; out[2] = (m12 + m21) / s; }
+  else { const s = Math.sqrt(1 + m22 - m00 - m11) * 2; out[3] = (m10 - m01) / s; out[0] = (m02 + m20) / s; out[1] = (m12 + m21) / s; out[2] = 0.25 * s; }
+}
 
 /**
  * Leaf local frame: +Y is the blade normal, +Z points from petiole to tip.

@@ -11,7 +11,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "metrics": "npx --yes tsx@4 scripts/metrics.ts"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

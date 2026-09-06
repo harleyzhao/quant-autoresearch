@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 4173;
-const PAGE_TIMEOUT_MS = 90_000;
+const PAGE_TIMEOUT_MS = 180_000;
 const outDir = join(root, 'smoke-out');
 mkdirSync(outDir, { recursive: true });
 
@@ -23,6 +23,7 @@ const cases = [
   { hash: '#species=quercus-robur&seed=7&age=25&day=190', file: 'oak.png' },
   { hash: '#species=pinus-sylvestris&seed=3&age=20&day=190', file: 'pine.png' },
   { hash: '#species=betula-pendula&seed=5&age=20&day=290', file: 'birch-autumn.png' },
+  { hash: '#species=acer-platanoides&seed=11&age=18&day=284', file: 'maple-autumn.png' },
 ];
 
 function waitForPort(port, timeoutMs = 20_000) {

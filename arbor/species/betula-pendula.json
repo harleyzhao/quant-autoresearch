@@ -62,5 +62,9 @@
       0.8
     ],
     "roughness": 0.7
-  }
+  },
+  "lateralShootScale": 0.9,
+  "axisKink": 0.12,
+  "flexibility": 1e-08,
+  "sagMax": 0.55
 }

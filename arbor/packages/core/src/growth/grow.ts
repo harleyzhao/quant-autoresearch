@@ -26,6 +26,8 @@ interface Bud {
   q: number; v: number;
   /** light-only quality (no space term); drives shedding */
   light: number;
+  /** markers seen last season (-1 = never evaluated). A dormant bud that saw none sees none until occupancy is refreshed. */
+  lastCnt: number;
   ox: number; oy: number; oz: number;
 }
 
@@ -61,6 +63,8 @@ export class TreeGrowth {
   children: number[][] = [];
   mainChild: number[] = [];
   lowLightYears: number[] = [];
+  /** accumulated gravitational bend per lateral root (rad) */
+  sag: number[] = [];
   // per-year derived
   nodeQ: number[] = [];
   nodeLight: number[] = [];
@@ -75,7 +79,7 @@ export class TreeGrowth {
   shadow: ShadowGrid;
   year = 0;
   /** cumulative ms per phase, for tuning */
-  profile = { light: 0, occupancy: 0, perceive: 0, allocate: 0, shoots: 0, shed: 0, secondary: 0 };
+  profile = { light: 0, occupancy: 0, perceive: 0, allocate: 0, shoots: 0, shed: 0, secondary: 0, sag: 0 };
   private scratch = new Float32Array(3);
   private static now(): number { const p = (globalThis as unknown as { performance?: { now(): number } }).performance; return p ? p.now() : Date.now(); }
 
@@ -89,7 +93,7 @@ export class TreeGrowth {
     this.shadow = new ShadowGrid(L * 1.0, this.opts.shadowA, this.opts.shadowB, this.opts.shadowDepth, this.opts.shadowSpread);
     // root node at ground
     this.addNode(-1, 0, 0, 0, 0, 1, 0, 0, 1);
-    this.buds.push({ node: 0, dx: 0, dy: 1, dz: 0, order: 0, lateral: false, age: 0, phase: 0, alive: true, q: 0, v: 0, light: 1, ox: 0, oy: 1, oz: 0 });
+    this.buds.push({ node: 0, dx: 0, dy: 1, dz: 0, order: 0, lateral: false, age: 0, phase: 0, alive: true, q: 0, v: 0, light: 1, lastCnt: -1, ox: 0, oy: 1, oz: 0 });
     this.nodeBuds[0].push(0);
   }
 
@@ -107,6 +111,7 @@ export class TreeGrowth {
     this.children.push([]);
     this.mainChild.push(-1);
     this.lowLightYears.push(0);
+    this.sag.push(0);
     this.nodeQ.push(0); this.nodeLight.push(0); this.nodeV.push(0); this.strands.push(0); this.radius.push(0);
     this.nodeBuds.push([]);
     if (parent >= 0) {
@@ -139,10 +144,13 @@ export class TreeGrowth {
 
     // 1b. dynamic occupancy: space is free again where branches were shed
     const L = sp.internodeLength;
-    if (this.year > 0 && this.year % this.opts.occupancyRefresh === 0) {
-      this.markers.resetOccupancy();
+    const refreshed = this.year > 0 && this.year % this.opts.occupancyRefresh === 0;
+    if (refreshed) {
       const occ = sp.occupancyRadius * L;
-      for (let i = 0; i < n; i++) if (this.alive[i]) this.markers.consume(this.px[i], this.py[i], this.pz[i], occ);
+      const pts = new Float32Array(n * 3);
+      let m = 0;
+      for (let i = 0; i < n; i++) if (this.alive[i]) { pts[m * 3] = this.px[i]; pts[m * 3 + 1] = this.py[i]; pts[m * 3 + 2] = this.pz[i]; m++; }
+      this.markers.recomputeOccupancy(pts, m, occ);
     }
 
     this.profile.occupancy += TreeGrowth.now() - t; t = TreeGrowth.now();
@@ -158,8 +166,12 @@ export class TreeGrowth {
       b.v = 0; // allocation is recomputed every season
       const x = this.px[b.node], y = this.py[b.node], z = this.pz[b.node];
       b.light = this.shadow.lightAt(x, y, z);
-      // deeply shaded buds cannot grow whatever the space; skip the expensive cone query
-      const cnt = anySpace && b.light > 0.05 ? this.markers.perceive(x, y, z, b.dx, b.dy, b.dz, dist, cosA, this.scratch) : 0;
+      // deeply shaded buds cannot grow whatever the space; skip the expensive cone query.
+      // Markers are only consumed between refreshes, so a dormant bud that saw none last year still sees none.
+      let cnt: number;
+      if (!anySpace || b.light <= 0.05) cnt = 0;
+      else if (b.lastCnt === 0 && !refreshed) cnt = 0; // bud has not moved since it last saw nothing
+      else { cnt = this.markers.perceive(x, y, z, b.dx, b.dy, b.dz, dist, cosA, this.scratch); b.lastCnt = cnt; }
       let qs: number;
       if (cnt > 0) {
         qs = Math.min(1, cnt / 6);
@@ -228,7 +240,12 @@ export class TreeGrowth {
 
     // 7. secondary growth
     this.secondaryGrowth();
-    this.profile.secondary += TreeGrowth.now() - t;
+    this.profile.secondary += TreeGrowth.now() - t; t = TreeGrowth.now();
+
+    // 8. branches bend under their own weight
+    // settled every few seasons with the accumulated angle: same droop, a third of the traversals
+    if (sp.flexibility > 0 && (this.year + 1) % 3 === 0) this.applySag(3);
+    this.profile.sag += TreeGrowth.now() - t;
     this.year++;
   }
 
@@ -236,15 +253,17 @@ export class TreeGrowth {
     const sp = this.sp;
     const rng = this.rng;
     const L0 = sp.internodeLength * Math.max(0.4, 1 - 0.12 * b.order);
-    const nMet = Math.max(1, Math.min(Math.floor(b.v), Math.floor(sp.maxShootLength / L0)));
+    const maxLen = sp.maxShootLength * (b.order > 0 ? sp.lateralShootScale : 1);
+    const nMet = Math.max(1, Math.min(Math.floor(b.v), Math.floor(maxLen / L0)));
     const lenScale = Math.min(1.35, Math.sqrt(b.v / nMet));
-    const L = Math.min(L0 * lenScale, sp.maxShootLength / nMet);
+    const L = Math.min(L0 * lenScale, maxLen / nMet);
     const cosA = Math.cos(sp.perceptionAngle * DEG);
     const dist = sp.perceptionDistance * sp.internodeLength;
     let cur = b.node;
     let pdx = b.dx, pdy = b.dy, pdz = b.dz;
     // the trunk is always orthotropic; weeping (negative gravitropism) only affects laterals and grows with order
-    const grav = b.order === 0 ? Math.max(0.3, sp.gravitropism) : sp.gravitropism < 0 ? sp.gravitropism * Math.min(1, b.order / 2) : sp.gravitropism;
+    const latGrav = sp.lateralGravitropism ?? sp.gravitropism;
+    const grav = b.order === 0 ? Math.max(0.3, sp.gravitropism) : latGrav < 0 ? latGrav * Math.min(1, b.order / 2) : latGrav;
     // detach bud from its node list
     const list = this.nodeBuds[b.node];
     const at = list.indexOf(bi); if (at >= 0) list.splice(at, 1);
@@ -272,7 +291,11 @@ export class TreeGrowth {
         if (sp.branchingMode === 'alternate') {
           if (rng.chance(sp.lateralBudProbability)) {
             b.phase += sp.phyllotaxis * DEG;
-            this.addLateralBud(node, gx, gy, gz, b.phase, b.order + 1);
+            const kinkIdx = this.addLateralBud(node, gx, gy, gz, b.phase, b.order + 1);
+            // sympodial tendency: the continuing axis kinks away from the new lateral
+            const kb = this.buds[kinkIdx];
+            gx -= sp.axisKink * kb.dx; gy -= sp.axisKink * kb.dy; gz -= sp.axisKink * kb.dz;
+            const km = Math.hypot(gx, gy, gz) || 1; gx /= km; gy /= km; gz /= km;
           }
         } else if (k === nMet - 1) {
           const cnt = sp.whorlCount;
@@ -285,11 +308,11 @@ export class TreeGrowth {
       cur = node; pdx = gx; pdy = gy; pdz = gz;
     }
     // bud continues as the terminal bud of the shoot
-    b.node = cur; b.dx = pdx; b.dy = pdy; b.dz = pdz; b.lateral = false; b.age = 0;
+    b.node = cur; b.dx = pdx; b.dy = pdy; b.dz = pdz; b.lateral = false; b.age = 0; b.lastCnt = -1;
     this.nodeBuds[cur].push(bi);
   }
 
-  private addLateralBud(node: number, ax: number, ay: number, az: number, phase: number, order: number): void {
+  private addLateralBud(node: number, ax: number, ay: number, az: number, phase: number, order: number): number {
     const sp = this.sp;
     // build an orthonormal frame around the axis
     let ux: number, uy: number, uz: number;
@@ -305,8 +328,72 @@ export class TreeGrowth {
     const by = ay * ca + (uy * cp + vy * spp) * sa;
     const bz = az * ca + (uz * cp + vz * spp) * sa;
     const bi = this.buds.length;
-    this.buds.push({ node, dx: bx, dy: by, dz: bz, order, lateral: true, age: 0, phase: this.rng.next() * Math.PI * 2, alive: true, q: 0, v: 0, light: 0, ox: bx, oy: by, oz: bz });
+    this.buds.push({ node, dx: bx, dy: by, dz: bz, order, lateral: true, age: 0, phase: this.rng.next() * Math.PI * 2, alive: true, q: 0, v: 0, light: 0, lastCnt: -1, ox: bx, oy: by, oz: bz });
     this.nodeBuds[node].push(bi);
+    return bi;
+  }
+
+  /**
+   * Gravitational bending. For every lateral branch root, the subtree's mass moment about the
+   * base (Σ segment length × horizontal lever) bends it down by flexibility·M/r² per year, up to
+   * sagMax in total. Old, heavy limbs droop; thin young shoots barely move; weeping habits use a
+   * high flexibility. Positions, growth directions and bud directions of the subtree rotate rigidly.
+   */
+  private applySag(years = 1): void {
+    const sp = this.sp;
+    const n = this.nodeCount;
+    // bottom-up subtree sums: weight, weighted x/z, node count
+    const W = new Float64Array(n), SX = new Float64Array(n), SZ = new Float64Array(n);
+    const C = new Int32Array(n);
+    for (let j = n - 1; j >= 1; j--) {
+      if (!this.alive[j]) continue;
+      const pj = this.parent[j];
+      const w = Math.hypot(this.px[j] - this.px[pj], this.py[j] - this.py[pj], this.pz[j] - this.pz[pj]) * (1 + 20 * this.radius[j]);
+      W[j] += w; SX[j] += w * this.px[j]; SZ[j] += w * this.pz[j]; C[j] += 1;
+      W[pj] += W[j]; SX[pj] += SX[j]; SZ[pj] += SZ[j]; C[pj] += C[j];
+    }
+    const sub: number[] = [];
+    const stack: number[] = [];
+    for (let i = 1; i < n; i++) {
+      if (!this.alive[i] || this.isMain[i] || this.sag[i] >= sp.sagMax || C[i] < 4) continue;
+      const p = this.parent[i];
+      const bx = this.px[p], by = this.py[p], bz = this.pz[p];
+      // horizontal mass-moment vector about the base
+      const mx = SX[i] - W[i] * bx, mz = SZ[i] - W[i] * bz;
+      const moment = Math.hypot(mx, mz);
+      if (moment < 1e-6) continue;
+      const r = Math.max(this.radius[i], 1e-3);
+      let theta = (sp.flexibility * moment) / (r * r * r);
+      theta = Math.min(theta * years, 0.06 * years, sp.sagMax - this.sag[i]);
+      if (theta < 1e-4) continue;
+      this.sag[i] += theta;
+      // axis = horizontal ⟂ to the moment direction, oriented so a positive rotation lowers the branch:
+      // rotating (mx,0,mz) about axis (mz,0,-mx)/|m| by +θ gives a negative y component.
+      const ax = mz / moment, az = -mx / moment;
+      sub.length = 0; stack.length = 0; stack.push(i);
+      while (stack.length) { const j = stack.pop()!; if (!this.alive[j]) continue; sub.push(j); for (const c of this.children[j]) stack.push(c); }
+      this.rotateSubtree(sub, bx, by, bz, ax, az, theta);
+    }
+  }
+
+  private rotateSubtree(sub: number[], bx: number, by: number, bz: number, ax: number, az: number, theta: number): void {
+    const c = Math.cos(theta), s1 = Math.sin(theta), oc = 1 - c;
+    const m00 = c + ax * ax * oc, m01 = -az * s1, m02 = ax * az * oc;
+    const m10 = az * s1, m11 = c, m12 = -ax * s1;
+    const m20 = ax * az * oc, m21 = ax * s1, m22 = c + az * az * oc;
+    for (const j of sub) {
+      const x = this.px[j] - bx, y = this.py[j] - by, z = this.pz[j] - bz;
+      this.px[j] = bx + m00 * x + m01 * y + m02 * z;
+      this.py[j] = Math.max(0.1, by + m10 * x + m11 * y + m12 * z);
+      this.pz[j] = bz + m20 * x + m21 * y + m22 * z;
+      const dx = this.dx[j], dy = this.dy[j], dz = this.dz[j];
+      this.dx[j] = m00 * dx + m01 * dy + m02 * dz; this.dy[j] = m10 * dx + m11 * dy + m12 * dz; this.dz[j] = m20 * dx + m21 * dy + m22 * dz;
+      for (const bi of this.nodeBuds[j]) {
+        const b = this.buds[bi];
+        const ex = b.dx, ey = b.dy, ez = b.dz;
+        b.dx = m00 * ex + m01 * ey + m02 * ez; b.dy = m10 * ex + m11 * ey + m12 * ez; b.dz = m20 * ex + m21 * ey + m22 * ez;
+      }
+    }
   }
 
   private shed(): void {
