@@ -265,8 +265,9 @@ export function leafSilhouette(params: LeafShapeParams, n = 96): LeafSilhouette 
         const side = i % 2 === 0 ? 1 : -1;
         const jitter = h01(i, 2) - 0.5;
         const a = ((angle + jitter * 30) * Math.PI) / 180;
-        const len = length * (0.8 + 0.4 * h01(i, 3));
         const dx = side * Math.sin(a), dy = Math.cos(a);
+        // keep needle tips inside the unit frame (y <= 1.05)
+        const len = Math.min(length * (0.8 + 0.4 * h01(i, 3)), (1.05 - t) / Math.max(0.2, dy));
         const nx = -dy * w * 0.5, ny = dx * w * 0.5;
         polygons.push(Float32Array.from([nx, t + ny, -nx, t - ny, dx * len - nx * 0.4, t + dy * len - ny * 0.4, dx * len + nx * 0.4, t + dy * len + ny * 0.4].map((v) => v)));
       }
