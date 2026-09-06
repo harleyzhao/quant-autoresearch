@@ -45,3 +45,22 @@ describe('skeleton simplification', () => {
     expect(simple.branches.index.length).toBeLessThanOrEqual(full.branches.index.length);
   });
 });
+
+describe('branch mesh winding', () => {
+  it('triangle winding agrees with the outward vertex normals', () => {
+    const m = generate(getSpecies('betula-pendula'), ind(3, 12));
+    const { position: P, normal: N, index: I } = m.branches;
+    let agree = 0, total = 0;
+    for (let t = 0; t < I.length; t += 3) {
+      const a = I[t] * 3, b = I[t + 1] * 3, c = I[t + 2] * 3;
+      const ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2];
+      const vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2];
+      const fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx;
+      const nx = N[a] + N[b] + N[c], ny = N[a + 1] + N[b + 1] + N[c + 1], nz = N[a + 2] + N[b + 2] + N[c + 2];
+      const d = fx * nx + fy * ny + fz * nz;
+      if (Math.abs(d) < 1e-12) continue;
+      total++; if (d > 0) agree++;
+    }
+    expect(agree / total).toBeGreaterThan(0.97);
+  });
+});

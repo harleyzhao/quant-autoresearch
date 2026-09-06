@@ -7,7 +7,7 @@ export { ShadowGrid } from './growth/shadow.js';
 export { phenologyAt, dailyTemperature, gddToDay, leafColor } from './growth/phenology.js';
 export { buildBranchMesh } from './mesh/branches.js';
 export type { BranchMeshOptions } from './mesh/branches.js';
-export { buildLeaves } from './mesh/leaves.js';
+export { buildLeaves, LEAF_CLUSTER_SIZE } from './mesh/leaves.js';
 export { simplifySkeleton } from './mesh/simplify.js';
 export { SPECIES, SPECIES_IDS, getSpecies, applyOverrides } from './species/index.js';
 export { generate, defaultIndividual, PlantSession } from './generate.js';

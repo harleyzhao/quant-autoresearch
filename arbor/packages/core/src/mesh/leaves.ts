@@ -10,6 +10,7 @@ import { leafColor } from '../growth/phenology.js';
 export function buildLeaves(sk: Skeleton, sp: SpeciesParams, ph: PhenologyState, currentYear: number, seed: number): LeafInstances {
   const rng = new Rng(seed ^ 0x5eaf);
   const lf = sp.leaf;
+  const cluster = lf.shape === 'needle' ? 1 : LEAF_CLUSTER_SIZE;
   const n = sk.count;
   const P = sk.position;
   let height = 0; for (let i = 0; i < n; i++) if (P[i * 3 + 1] > height) height = P[i * 3 + 1];
@@ -30,8 +31,10 @@ export function buildLeaves(sk: Skeleton, sp: SpeciesParams, ph: PhenologyState,
     const shootAge = Math.min(currentYear - sk.birthYear[i], lf.maxShootAge);
     // tips carry the short-shoot cluster of the season: more leaves than a plain internode
     const needle = lf.shape === 'needle';
-    // needles: one bottlebrush instance per ~0.6 internode of shoot, aligned with the shoot
-    const count = needle ? Math.max(1, Math.round((len / (sp.internodeLength * 0.6)) * lf.perNode)) : sk.isTip[i] ? Math.round(lf.perNode * 1.6) : lf.perNode;
+    // needles: one bottlebrush instance per ~0.6 internode of shoot, aligned with the shoot;
+    // broadleaves: instances are clusters of `cluster` leaves, so fewer instances carry the same foliage
+    const wanted = needle ? Math.max(1, Math.round((len / (sp.internodeLength * 0.6)) * lf.perNode)) : sk.isTip[i] ? Math.round(lf.perNode * 1.6) : lf.perNode;
+    const count = needle ? wanted : Math.max(1, Math.round(wanted / cluster));
     for (let k = 0; k < count; k++, leafId++) {
       // position along the internode
       const t = needle ? k / count : (k + 0.5) / count;
@@ -77,8 +80,12 @@ export function buildLeaves(sk: Skeleton, sp: SpeciesParams, ph: PhenologyState,
     count: scale.length,
     position: Float32Array.from(pos), quaternion: Float32Array.from(quat), scale: Float32Array.from(scale),
     color: Float32Array.from(col), pigment: Float32Array.from(pig), node: Uint32Array.from(nodeOf),
+    leavesPerInstance: cluster,
   };
 }
+
+/** Broadleaf instances are sprays of this many leaves (baked into one card by the renderer). */
+export const LEAF_CLUSTER_SIZE = 3;
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 

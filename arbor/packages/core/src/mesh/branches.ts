@@ -87,7 +87,7 @@ export function buildBranchMesh(sk: Skeleton, opts: BranchMeshOptions = {}): Bra
     for (let s = 0; s < seg; s++) {
       const a0 = a + Math.round((s / seg) * segA), a1 = a + Math.round(((s + 1) / seg) * segA);
       const b0 = b + Math.round((s / seg) * segB), b1 = b + Math.round(((s + 1) / seg) * segB);
-      idx.push(a0, b0, b1, a0, b1, a1);
+      idx.push(a0, b1, b0, a0, a1, b1); // CCW seen from outside (matches the outward ring normals)
     }
   };
 

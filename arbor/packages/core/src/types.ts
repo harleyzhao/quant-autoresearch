@@ -190,6 +190,8 @@ export interface LeafInstances {
   pigment: Float32Array; // n*4
   /** Parent skeleton node per leaf (for wind hierarchy). */
   node: Uint32Array;
+  /** Leaves represented by one instance: 1 = a single leaf card, >1 = a baked cluster (spray) of that many leaves. */
+  leavesPerInstance: number;
 }
 
 export interface PhenologyState {
