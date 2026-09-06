@@ -1,0 +1,56 @@
+{
+  "id": "tilia",
+  "name": "Tilia (limes, lindens)",
+  "template": "troll",
+  "kernel": {
+    "apicalControl": 0.55,
+    "branchingAngle": 45,
+    "lateralGravitropism": -0.05,
+    "flexibility": 1.2e-08,
+    "sagMax": 0.5,
+    "shedThreshold": 0.15,
+    "shedYears": 4,
+    "tipRadius": 0.0016,
+    "deadBranchYears": 2
+  },
+  "leaf": {
+    "shape": "ovate",
+    "perNode": 5,
+    "maxShootAge": 2,
+    "maxBranchRadius": 0.009,
+    "color": [
+      0.13,
+      0.34,
+      0.09
+    ],
+    "autumnPigment": "yellow",
+    "shapeParams": {
+      "aspect": 0.95,
+      "widestAt": 0.3,
+      "base": "cordate",
+      "apex": "acuminate",
+      "serration": {
+        "amplitude": 0.06,
+        "count": 16
+      }
+    }
+  },
+  "bark": {
+    "family": "ridged",
+    "scale": 1.8,
+    "color": [
+      0.4,
+      0.37,
+      0.33
+    ],
+    "roughness": 0.85,
+    "twigColor": [
+      0.3,
+      0.24,
+      0.18
+    ],
+    "twigRadius": 0.01
+  },
+  "crownShape": "ellipsoid",
+  "crownBaseFraction": 0.14
+}

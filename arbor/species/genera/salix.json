@@ -1,0 +1,40 @@
+{
+  "id": "salix",
+  "name": "Salix (willows)",
+  "template": "champagnat",
+  "kernel": {
+    "branchingAngle": 35,
+    "tipRadius": 0.002,
+    "deadBranchYears": 2
+  },
+  "leaf": {
+    "shape": "lanceolate",
+    "perNode": 8,
+    "maxShootAge": 2,
+    "maxBranchRadius": 0.008,
+    "color": [
+      0.2,
+      0.38,
+      0.12
+    ],
+    "autumnPigment": "yellow"
+  },
+  "bark": {
+    "family": "furrowed",
+    "scale": 1.4,
+    "color": [
+      0.4,
+      0.34,
+      0.26
+    ],
+    "roughness": 0.9,
+    "twigColor": [
+      0.45,
+      0.38,
+      0.18
+    ],
+    "twigRadius": 0.008
+  },
+  "crownShape": "spreading",
+  "crownBaseFraction": 0.12
+}

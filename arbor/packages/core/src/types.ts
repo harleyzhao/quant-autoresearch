@@ -137,6 +137,32 @@ export interface SpeciesParams {
   leaf: LeafParams;
   phenology: PhenologyParams;
   bark: BarkParams;
+  /**
+   * Growth curves from the species identity sheet (ADR-005). When present, the crown envelope is
+   * scaled to height(age)/width(age) each season and the trunk radius follows dbh(age); the pipe
+   * model then only distributes radius to the branches. Ages ascending, values in metres.
+   */
+  curves?: GrowthCurves;
+}
+
+export interface GrowthCurves {
+  ages: number[];
+  height: number[];
+  width: number[];
+  /** trunk diameter at breast height, metres */
+  dbh: number[];
+}
+
+/** Piecewise-linear lookup with (0,0) implied and a flat tail after the last age. */
+export function curveAt(ages: number[], values: number[], age: number): number {
+  if (ages.length === 0) return 0;
+  if (age <= 0) return 0;
+  let prevA = 0, prevV = 0;
+  for (let i = 0; i < ages.length; i++) {
+    if (age <= ages[i]) return prevV + ((values[i] - prevV) * (age - prevA)) / Math.max(1e-6, ages[i] - prevA);
+    prevA = ages[i]; prevV = values[i];
+  }
+  return prevV;
 }
 
 /** Axis-aligned obstacle in world space (meters). Markers inside are removed, shoots cannot enter, and it casts shade. */

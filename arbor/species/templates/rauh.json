@@ -1,0 +1,32 @@
+{
+  "id": "rauh",
+  "name": "Rauh model",
+  "description": "Monopodial trunk with rhythmic growth; orthotropic lateral branches in tiers (whorls or pseudo-whorls). Pines, oaks, ashes, maples, poplars, cherries. Adults of many species lose apical control and become decurrent (genus sets apicalControl).",
+  "kernel": {
+    "apicalControl": 0.6,
+    "resourceScale": 2.8,
+    "perceptionAngle": 58,
+    "perceptionDistance": 5,
+    "occupancyRadius": 0.9,
+    "phyllotaxis": 137.5,
+    "branchingMode": "alternate",
+    "whorlCount": 0,
+    "lateralBudProbability": 0.5,
+    "budLifespan": 3,
+    "directionInertia": 1.0,
+    "phototropism": 0.85,
+    "gravitropism": 0.2,
+    "lateralGravitropism": 0.12,
+    "lateralShootScale": 0.8,
+    "axisKink": 0.12,
+    "flexibility": 8e-09,
+    "sagMax": 0.4,
+    "noise": 0.3,
+    "maxOrder": 10,
+    "shedThreshold": 0.12,
+    "shedYears": 3,
+    "daVinciExponent": 2.0,
+    "tipRadius": 0.0022,
+    "deadBranchYears": 2
+  }
+}

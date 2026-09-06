@@ -2,89 +2,34 @@
   "id": "prunus-avium",
   "name": "Wild Cherry",
   "latinName": "Prunus avium",
-  "habit": "broadleaf",
-  "apicalControl": 0.7,
-  "resourceScale": 2.8,
-  "internodeLength": 0.26,
-  "maxShootLength": 0.8,
-  "perceptionAngle": 58,
-  "perceptionDistance": 5,
-  "occupancyRadius": 0.9,
-  "branchingAngle": 55,
-  "phyllotaxis": 137.5,
-  "branchingMode": "whorled",
-  "whorlCount": 4,
-  "lateralBudProbability": 0.7,
-  "budLifespan": 3,
-  "directionInertia": 1.1,
-  "phototropism": 0.8,
-  "gravitropism": 0.2,
-  "noise": 0.22,
-  "maxOrder": 10,
-  "shedThreshold": 0.18,
-  "shedYears": 2,
-  "daVinciExponent": 2.0,
-  "tipRadius": 0.0016,
-  "radialGrowthPerYear": 0.002,
-  "crown": {
-    "shape": "ellipsoid",
-    "height": 13,
-    "width": 9,
-    "baseHeight": 2.0
-  },
-  "leaf": {
-    "shape": "ovate",
-    "length": 0.11,
-    "width": 0.055,
-    "perNode": 5,
-    "maxShootAge": 2,
-    "maxBranchRadius": 0.009,
-    "color": [
-      0.12,
-      0.32,
-      0.08
-    ],
-    "autumnPigment": "red",
-    "shapeParams": {
-      "aspect": 0.5,
-      "widestAt": 0.42,
-      "base": "rounded",
-      "apex": "acuminate",
-      "serration": {
-        "amplitude": 0.07,
-        "count": 20
-      }
-    }
-  },
-  "phenology": {
-    "budburstGDD": 140,
-    "leafExpandDays": 20,
-    "senescenceDay": 268,
-    "senescenceDays": 25,
-    "abscissionDay": 288,
-    "abscissionDays": 25,
-    "evergreen": false
-  },
-  "bark": {
-    "color": [
-      0.45,
-      0.3,
-      0.24
-    ],
-    "roughness": 0.6,
-    "family": "lenticel",
-    "scale": 1.4,
-    "twigColor": [
-      0.3,
-      0.18,
-      0.14
-    ],
-    "twigRadius": 0.01
-  },
-  "lateralShootScale": 0.7,
-  "axisKink": 0.05,
-  "flexibility": 8e-09,
-  "sagMax": 0.35,
-  "lateralGravitropism": 0.08,
-  "deadBranchYears": 1
+  "genus": "prunus",
+  "identity": {
+    "heightAt": {
+      "20": 12,
+      "50": 20
+    },
+    "maxHeight": 25,
+    "dbhAt": {
+      "20": 20,
+      "50": 45
+    },
+    "crownWidthAt": {
+      "20": 6,
+      "50": 10
+    },
+    "leaf": {
+      "length": 0.11,
+      "width": 0.055
+    },
+    "phenology": {
+      "budburstDOY": 108,
+      "colouringDOY": 272,
+      "leafFallDOY": 290
+    },
+    "longevity": 100,
+    "referenceLatitude": 50,
+    "sources": [
+      "literature-typical values (open-grown, ~50°N); replace with Tallo (Jucker et al. 2022), national yield tables and PEP725 extracts (D2)"
+    ]
+  }
 }

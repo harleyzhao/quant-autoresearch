@@ -1,37 +1,25 @@
 import type { SpeciesParams } from '../types.js';
-import quercus from '../../../../species/quercus-robur.json' with { type: 'json' };
-import betula from '../../../../species/betula-pendula.json' with { type: 'json' };
-import pinus from '../../../../species/pinus-sylvestris.json' with { type: 'json' };
-import acer from '../../../../species/acer-platanoides.json' with { type: 'json' };
-import fagus_sylvatica from '../../../../species/fagus-sylvatica.json' with { type: 'json' };
-import fraxinus_excelsior from '../../../../species/fraxinus-excelsior.json' with { type: 'json' };
-import picea_abies from '../../../../species/picea-abies.json' with { type: 'json' };
-import populus_tremula from '../../../../species/populus-tremula.json' with { type: 'json' };
-import salix_babylonica from '../../../../species/salix-babylonica.json' with { type: 'json' };
-import platanus_acerifolia from '../../../../species/platanus-acerifolia.json' with { type: 'json' };
-import tilia_cordata from '../../../../species/tilia-cordata.json' with { type: 'json' };
-import prunus_avium from '../../../../species/prunus-avium.json' with { type: 'json' };
+import { TEMPLATES, GENERA, SHEETS } from './registry.generated.js';
+import { buildContext, resolveSpecies, type SpeciesSheet, type GenusDef, type ArchTemplate } from './resolve.js';
 
-export const SPECIES: Record<string, SpeciesParams> = {
-  [quercus.id]: quercus as SpeciesParams,
-  [betula.id]: betula as SpeciesParams,
-  [pinus.id]: pinus as SpeciesParams,
-  [acer.id]: acer as SpeciesParams,
-  [fagus_sylvatica.id]: fagus_sylvatica as SpeciesParams,
-  [fraxinus_excelsior.id]: fraxinus_excelsior as SpeciesParams,
-  [picea_abies.id]: picea_abies as SpeciesParams,
-  [populus_tremula.id]: populus_tremula as SpeciesParams,
-  [salix_babylonica.id]: salix_babylonica as SpeciesParams,
-  [platanus_acerifolia.id]: platanus_acerifolia as SpeciesParams,
-  [tilia_cordata.id]: tilia_cordata as SpeciesParams,
-  [prunus_avium.id]: prunus_avium as SpeciesParams,
-};
+export const CONTEXT = buildContext(TEMPLATES, GENERA);
+export const SHEETS_BY_ID: Record<string, SpeciesSheet> = Object.fromEntries(SHEETS.map((s) => [s.id, s]));
+export const GENERA_BY_ID: Record<string, GenusDef> = Object.fromEntries(GENERA.map((g) => [g.id, g]));
+export const TEMPLATES_BY_ID: Record<string, ArchTemplate> = Object.fromEntries(TEMPLATES.map((t) => [t.id, t]));
 
+/** Kernel parameters for every species, resolved from template + genus + identity sheet. */
+export const SPECIES: Record<string, SpeciesParams> = Object.fromEntries(SHEETS.map((s) => [s.id, resolveSpecies(s, CONTEXT)]));
 export const SPECIES_IDS = Object.keys(SPECIES);
 
 export function getSpecies(id: string): SpeciesParams {
   const s = SPECIES[id];
   if (!s) throw new Error(`Unknown species '${id}'. Known: ${SPECIES_IDS.join(', ')}`);
+  return s;
+}
+
+export function getSheet(id: string): SpeciesSheet {
+  const s = SHEETS_BY_ID[id];
+  if (!s) throw new Error(`Unknown species '${id}'`);
   return s;
 }
 

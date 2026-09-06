@@ -1,0 +1,32 @@
+{
+  "id": "troll",
+  "name": "Troll model",
+  "description": "Sympodial: every axis is plagiotropic at first and straightens secondarily; the trunk is built from successive relay branches. Beech, lime, elm, hornbeam.",
+  "kernel": {
+    "apicalControl": 0.48,
+    "resourceScale": 2.7,
+    "perceptionAngle": 62,
+    "perceptionDistance": 5,
+    "occupancyRadius": 0.9,
+    "phyllotaxis": 180,
+    "branchingMode": "alternate",
+    "whorlCount": 0,
+    "lateralBudProbability": 0.5,
+    "budLifespan": 3,
+    "directionInertia": 0.9,
+    "phototropism": 0.9,
+    "gravitropism": 0.12,
+    "lateralGravitropism": 0.0,
+    "lateralShootScale": 0.85,
+    "axisKink": 0.18,
+    "flexibility": 1e-08,
+    "sagMax": 0.5,
+    "noise": 0.3,
+    "maxOrder": 10,
+    "shedThreshold": 0.1,
+    "shedYears": 4,
+    "daVinciExponent": 2.0,
+    "tipRadius": 0.002,
+    "deadBranchYears": 2
+  }
+}

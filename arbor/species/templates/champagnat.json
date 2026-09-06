@@ -1,0 +1,32 @@
+{
+  "id": "champagnat",
+  "name": "Champagnat model",
+  "description": "Sympodial; axes are orthotropic at first and bend under their own weight, relay shoots arising on the convex side. Weeping willows, forsythia, bougainvillea.",
+  "kernel": {
+    "apicalControl": 0.6,
+    "resourceScale": 3.4,
+    "perceptionAngle": 65,
+    "perceptionDistance": 5,
+    "occupancyRadius": 0.9,
+    "phyllotaxis": 137.5,
+    "branchingMode": "alternate",
+    "whorlCount": 0,
+    "lateralBudProbability": 0.6,
+    "budLifespan": 3,
+    "directionInertia": 1.0,
+    "phototropism": 0.7,
+    "gravitropism": 0.35,
+    "lateralGravitropism": -0.1,
+    "lateralShootScale": 1.0,
+    "axisKink": 0.1,
+    "flexibility": 2e-08,
+    "sagMax": 0.7,
+    "noise": 0.25,
+    "maxOrder": 10,
+    "shedThreshold": 0.12,
+    "shedYears": 3,
+    "daVinciExponent": 2.0,
+    "tipRadius": 0.002,
+    "deadBranchYears": 2
+  }
+}

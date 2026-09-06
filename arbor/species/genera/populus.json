@@ -1,0 +1,61 @@
+{
+  "id": "populus",
+  "name": "Populus (poplars, aspens)",
+  "template": "rauh",
+  "kernel": {
+    "apicalControl": 0.65,
+    "branchingAngle": 42,
+    "noise": 0.3,
+    "gravitropism": 0.3,
+    "lateralGravitropism": 0.25,
+    "lateralShootScale": 0.7,
+    "axisKink": 0.1,
+    "flexibility": 8e-09,
+    "sagMax": 0.3,
+    "shedThreshold": 0.18,
+    "shedYears": 2,
+    "tipRadius": 0.0022,
+    "deadBranchYears": 2,
+    "resourceScale": 3.2
+  },
+  "leaf": {
+    "shape": "ovate",
+    "perNode": 5,
+    "maxShootAge": 2,
+    "maxBranchRadius": 0.008,
+    "color": [
+      0.14,
+      0.33,
+      0.09
+    ],
+    "autumnPigment": "yellow",
+    "shapeParams": {
+      "aspect": 1.0,
+      "widestAt": 0.45,
+      "base": "rounded",
+      "apex": "obtuse",
+      "serration": {
+        "amplitude": 0.08,
+        "count": 10
+      }
+    }
+  },
+  "bark": {
+    "family": "smooth",
+    "scale": 1.2,
+    "color": [
+      0.62,
+      0.63,
+      0.55
+    ],
+    "roughness": 0.7,
+    "twigColor": [
+      0.3,
+      0.33,
+      0.24
+    ],
+    "twigRadius": 0.01
+  },
+  "crownShape": "column",
+  "crownBaseFraction": 0.18
+}

@@ -2,88 +2,34 @@
   "id": "fagus-sylvatica",
   "name": "European Beech",
   "latinName": "Fagus sylvatica",
-  "habit": "broadleaf",
-  "apicalControl": 0.5,
-  "resourceScale": 2.7,
-  "internodeLength": 0.22,
-  "maxShootLength": 0.6,
-  "perceptionAngle": 62,
-  "perceptionDistance": 5,
-  "occupancyRadius": 0.9,
-  "branchingAngle": 40,
-  "phyllotaxis": 180,
-  "branchingMode": "alternate",
-  "whorlCount": 0,
-  "lateralBudProbability": 0.5,
-  "budLifespan": 3,
-  "directionInertia": 0.9,
-  "phototropism": 0.9,
-  "gravitropism": 0.12,
-  "noise": 0.3,
-  "maxOrder": 10,
-  "shedThreshold": 0.12,
-  "shedYears": 4,
-  "daVinciExponent": 2.0,
-  "tipRadius": 0.0016,
-  "radialGrowthPerYear": 0.002,
-  "crown": {
-    "shape": "ellipsoid",
-    "height": 16,
-    "width": 14,
-    "baseHeight": 2.5
-  },
-  "leaf": {
-    "shape": "ovate",
-    "length": 0.09,
-    "width": 0.06,
-    "perNode": 6,
-    "maxShootAge": 2,
-    "maxBranchRadius": 0.01,
-    "color": [
-      0.12,
-      0.34,
-      0.08
-    ],
-    "autumnPigment": "orange",
-    "shapeParams": {
-      "aspect": 0.62,
-      "widestAt": 0.45,
-      "base": "cuneate",
-      "apex": "acute",
-      "serration": {
-        "amplitude": 0.0,
-        "count": 0
-      }
-    }
-  },
-  "phenology": {
-    "budburstGDD": 170,
-    "leafExpandDays": 22,
-    "senescenceDay": 280,
-    "senescenceDays": 30,
-    "abscissionDay": 305,
-    "abscissionDays": 40,
-    "evergreen": false
-  },
-  "bark": {
-    "color": [
-      0.55,
-      0.53,
-      0.5
-    ],
-    "roughness": 0.75,
-    "family": "smooth",
-    "scale": 1.2,
-    "twigColor": [
-      0.3,
-      0.26,
-      0.2
-    ],
-    "twigRadius": 0.01
-  },
-  "lateralShootScale": 0.85,
-  "axisKink": 0.12,
-  "flexibility": 9e-09,
-  "sagMax": 0.45,
-  "deadBranchYears": 2
+  "genus": "fagus",
+  "identity": {
+    "heightAt": {
+      "20": 10,
+      "50": 25
+    },
+    "maxHeight": 40,
+    "dbhAt": {
+      "20": 15,
+      "50": 45
+    },
+    "crownWidthAt": {
+      "20": 6,
+      "50": 15
+    },
+    "leaf": {
+      "length": 0.09,
+      "width": 0.06
+    },
+    "phenology": {
+      "budburstDOY": 120,
+      "colouringDOY": 290,
+      "leafFallDOY": 310
+    },
+    "longevity": 300,
+    "referenceLatitude": 50,
+    "sources": [
+      "literature-typical values (open-grown, ~50°N); replace with Tallo (Jucker et al. 2022), national yield tables and PEP725 extracts (D2)"
+    ]
+  }
 }

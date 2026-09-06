@@ -2,88 +2,34 @@
   "id": "populus-tremula",
   "name": "European Aspen",
   "latinName": "Populus tremula",
-  "habit": "broadleaf",
-  "apicalControl": 0.65,
-  "resourceScale": 3.2,
-  "internodeLength": 0.3,
-  "maxShootLength": 0.9,
-  "perceptionAngle": 58,
-  "perceptionDistance": 5,
-  "occupancyRadius": 0.9,
-  "branchingAngle": 42,
-  "phyllotaxis": 137.5,
-  "branchingMode": "alternate",
-  "whorlCount": 0,
-  "lateralBudProbability": 0.5,
-  "budLifespan": 3,
-  "directionInertia": 1.0,
-  "phototropism": 0.8,
-  "gravitropism": 0.3,
-  "noise": 0.3,
-  "maxOrder": 10,
-  "shedThreshold": 0.18,
-  "shedYears": 2,
-  "daVinciExponent": 2.0,
-  "tipRadius": 0.0022,
-  "radialGrowthPerYear": 0.0018,
-  "crown": {
-    "shape": "column",
-    "height": 16,
-    "width": 7,
-    "baseHeight": 3.0
-  },
-  "leaf": {
-    "shape": "ovate",
-    "length": 0.06,
-    "width": 0.06,
-    "perNode": 5,
-    "maxShootAge": 2,
-    "maxBranchRadius": 0.008,
-    "color": [
-      0.14,
-      0.33,
-      0.09
-    ],
-    "autumnPigment": "yellow",
-    "shapeParams": {
-      "aspect": 1.0,
-      "widestAt": 0.45,
-      "base": "rounded",
-      "apex": "obtuse",
-      "serration": {
-        "amplitude": 0.08,
-        "count": 10
-      }
-    }
-  },
-  "phenology": {
-    "budburstGDD": 110,
-    "leafExpandDays": 18,
-    "senescenceDay": 262,
-    "senescenceDays": 22,
-    "abscissionDay": 280,
-    "abscissionDays": 22,
-    "evergreen": false
-  },
-  "bark": {
-    "color": [
-      0.62,
-      0.63,
-      0.55
-    ],
-    "roughness": 0.7,
-    "family": "smooth",
-    "scale": 1.2,
-    "twigColor": [
-      0.3,
-      0.33,
-      0.24
-    ],
-    "twigRadius": 0.01
-  },
-  "lateralShootScale": 0.7,
-  "axisKink": 0.1,
-  "flexibility": 8e-09,
-  "sagMax": 0.3,
-  "deadBranchYears": 2
+  "genus": "populus",
+  "identity": {
+    "heightAt": {
+      "20": 14,
+      "50": 22
+    },
+    "maxHeight": 25,
+    "dbhAt": {
+      "20": 18,
+      "50": 40
+    },
+    "crownWidthAt": {
+      "20": 5,
+      "50": 9
+    },
+    "leaf": {
+      "length": 0.06,
+      "width": 0.06
+    },
+    "phenology": {
+      "budburstDOY": 105,
+      "colouringDOY": 270,
+      "leafFallDOY": 285
+    },
+    "longevity": 100,
+    "referenceLatitude": 50,
+    "sources": [
+      "literature-typical values (open-grown, ~50°N); replace with Tallo (Jucker et al. 2022), national yield tables and PEP725 extracts (D2)"
+    ]
+  }
 }

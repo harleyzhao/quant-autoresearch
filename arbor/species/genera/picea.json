@@ -1,0 +1,46 @@
+{
+  "id": "picea",
+  "name": "Picea (spruces)",
+  "template": "massart",
+  "kernel": {
+    "branchingAngle": 80,
+    "tipRadius": 0.0028,
+    "deadBranchYears": 8
+  },
+  "leaf": {
+    "shape": "needle",
+    "perNode": 1,
+    "maxShootAge": 5,
+    "maxBranchRadius": 0.008,
+    "color": [
+      0.07,
+      0.2,
+      0.08
+    ],
+    "autumnPigment": "none",
+    "shapeParams": {
+      "needle": {
+        "count": 240,
+        "angle": 60
+      }
+    }
+  },
+  "bark": {
+    "family": "plated",
+    "scale": 2.5,
+    "color": [
+      0.36,
+      0.28,
+      0.22
+    ],
+    "roughness": 0.9,
+    "twigColor": [
+      0.36,
+      0.26,
+      0.18
+    ],
+    "twigRadius": 0.01
+  },
+  "crownShape": "cone",
+  "crownBaseFraction": 0.03
+}

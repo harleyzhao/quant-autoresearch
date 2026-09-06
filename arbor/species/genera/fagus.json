@@ -1,0 +1,54 @@
+{
+  "id": "fagus",
+  "name": "Fagus (beeches)",
+  "template": "troll",
+  "kernel": {
+    "branchingAngle": 40,
+    "flexibility": 9e-09,
+    "sagMax": 0.45,
+    "shedThreshold": 0.12,
+    "shedYears": 4,
+    "tipRadius": 0.0016,
+    "deadBranchYears": 2
+  },
+  "leaf": {
+    "shape": "ovate",
+    "perNode": 6,
+    "maxShootAge": 2,
+    "maxBranchRadius": 0.01,
+    "color": [
+      0.12,
+      0.34,
+      0.08
+    ],
+    "autumnPigment": "orange",
+    "shapeParams": {
+      "aspect": 0.62,
+      "widestAt": 0.45,
+      "base": "cuneate",
+      "apex": "acute",
+      "serration": {
+        "amplitude": 0.0,
+        "count": 0
+      }
+    }
+  },
+  "bark": {
+    "family": "smooth",
+    "scale": 1.2,
+    "color": [
+      0.55,
+      0.53,
+      0.5
+    ],
+    "roughness": 0.75,
+    "twigColor": [
+      0.3,
+      0.26,
+      0.2
+    ],
+    "twigRadius": 0.01
+  },
+  "crownShape": "ellipsoid",
+  "crownBaseFraction": 0.14
+}

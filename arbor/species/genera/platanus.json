@@ -1,0 +1,65 @@
+{
+  "id": "platanus",
+  "name": "Platanus (planes)",
+  "template": "rauh",
+  "kernel": {
+    "apicalControl": 0.48,
+    "branchingAngle": 50,
+    "noise": 0.35,
+    "directionInertia": 0.9,
+    "phototropism": 0.9,
+    "gravitropism": 0.1,
+    "lateralGravitropism": 0.1,
+    "axisKink": 0.15,
+    "flexibility": 7e-09,
+    "sagMax": 0.4,
+    "lateralBudProbability": 0.45,
+    "shedThreshold": 0.14,
+    "shedYears": 3,
+    "tipRadius": 0.0016,
+    "deadBranchYears": 2,
+    "resourceScale": 3.0
+  },
+  "leaf": {
+    "shape": "palmate",
+    "perNode": 3,
+    "maxShootAge": 2,
+    "maxBranchRadius": 0.012,
+    "color": [
+      0.14,
+      0.33,
+      0.08
+    ],
+    "autumnPigment": "brown",
+    "shapeParams": {
+      "aspect": 1.2,
+      "lobes": {
+        "count": 5,
+        "depth": 0.32,
+        "round": 0.2
+      },
+      "serration": {
+        "amplitude": 0.04,
+        "count": 4
+      }
+    }
+  },
+  "bark": {
+    "family": "exfoliating",
+    "scale": 1.0,
+    "color": [
+      0.66,
+      0.62,
+      0.52
+    ],
+    "roughness": 0.7,
+    "twigColor": [
+      0.36,
+      0.32,
+      0.24
+    ],
+    "twigRadius": 0.012
+  },
+  "crownShape": "spreading",
+  "crownBaseFraction": 0.16
+}

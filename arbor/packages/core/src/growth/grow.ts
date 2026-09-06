@@ -1,4 +1,5 @@
-import type { SpeciesParams, Skeleton, Obstacle } from '../types.js';
+import type { SpeciesParams, Skeleton, Obstacle, CrownEnvelope } from '../types.js';
+import { curveAt } from '../types.js';
 import { Rng } from '../rng.js';
 import { MarkerField, generateMarkers, insideEnvelope } from './markers.js';
 import { ShadowGrid } from './shadow.js';
@@ -90,6 +91,8 @@ export class TreeGrowth {
   markers: MarkerField;
   shadow: ShadowGrid;
   year = 0;
+  private retainedThisSeason = 0;
+  private retainedAtStart = 0;
   /** last season in which any shoot was produced; foliage is placed relative to it when growth is frozen by the node budget */
   lastShootYear = 0;
   private juvenileCleared = false;
@@ -119,6 +122,7 @@ export class TreeGrowth {
       pts = Float32Array.from(keep);
     }
     this.markers = new MarkerField(pts, L * species.perceptionDistance * 0.5);
+    if (species.curves) { this.markers.lockAll(); this.unlockEnvelope(1); }
     this.shadow = new ShadowGrid(L * 1.0, this.opts.shadowA, this.opts.shadowB, this.opts.shadowDepth, this.opts.shadowSpread);
     // root node at ground
     this.addNode(-1, 0, 0, 0, 0, 1, 0, 0, 1);
@@ -127,6 +131,36 @@ export class TreeGrowth {
   }
 
   get nodeCount(): number { return this.parent.length; }
+
+  /** Crown envelope the tree is allowed to fill at `age` (mature envelope scaled by the identity curves). */
+  envelopeAt(age: number): CrownEnvelope {
+    const c = this.sp.curves, env = this.sp.crown;
+    if (!c) return env;
+    const hM = curveAt(c.ages, c.height, Infinity), wM = curveAt(c.ages, c.width, Infinity);
+    const h = curveAt(c.ages, c.height, age), w = curveAt(c.ages, c.width, age);
+    // the mature envelope may have been overridden by the user; keep that ratio
+    const totalM = env.height + env.baseHeight;
+    const hs = hM > 0 ? (h / hM) * totalM : totalM, ws = wM > 0 ? (w / wM) * env.width : env.width;
+    const base = env.baseHeight * (hs / Math.max(1e-6, totalM));
+    return { shape: env.shape, height: Math.max(0.3, hs - base), width: Math.max(0.3, ws), baseHeight: base };
+  }
+
+  private unlockEnvelope(age: number): void {
+    const env = this.envelopeAt(age);
+    this.markers.unlockWhere((x, y, z) => insideEnvelope(env, x, y, z));
+  }
+
+  /** Trunk radius at breast height the identity sheet prescribes for `age`, or undefined without curves. */
+  trunkRadiusAt(age: number): number | undefined {
+    const c = this.sp.curves;
+    if (!c) return undefined;
+    const dM = curveAt(c.ages, c.dbh, Infinity);
+    const d = curveAt(c.ages, c.dbh, age);
+    // user crown-size overrides scale the trunk with the same factor as the height
+    const totalM = this.sp.crown.height + this.sp.crown.baseHeight, hM = curveAt(c.ages, c.height, Infinity);
+    const k = hM > 0 ? totalM / hM : 1;
+    return Math.max(0.002, (d / 2) * k) || (dM / 2) * k;
+  }
 
   /** True if the point is inside any obstacle. */
   blocked(x: number, y: number, z: number): boolean {
@@ -165,6 +199,9 @@ export class TreeGrowth {
   step(): void {
     const sp = this.sp;
     const n = this.nodeCount;
+    if (sp.curves) this.unlockEnvelope(this.year + 1);
+    this.retainedThisSeason = this.retainedCount();
+    this.retainedAtStart = this.nodeCount;
     // 1. light: shade is cast by foliage, i.e. young shoots and shoot tips, not by bare interior wood
     const foliageAge = sp.leaf.maxShootAge;
     const pos = new Float32Array(n * 3);
@@ -209,9 +246,10 @@ export class TreeGrowth {
     // 2. bud perception
     const cosA = Math.cos(sp.perceptionAngle * DEG);
     const dist = sp.perceptionDistance * L;
-    const crownBase = sp.crown.baseHeight + sp.crown.height * 0.1;
+    const envNow = this.envelopeAt(this.year + 1);
+    const crownBase = envNow.baseHeight + envNow.height * 0.1;
     // at the node budget the crown is frozen: only shedding and secondary growth continue
-    const anySpace = this.markers.remaining > 0 && this.nodeCount < this.opts.maxNodes;
+    const anySpace = this.markers.remaining > 0 && this.retainedThisSeason < this.opts.maxNodes;
     for (const b of this.buds) {
       if (!b.alive) continue;
       b.v = 0; // allocation is recomputed every season
@@ -274,12 +312,26 @@ export class TreeGrowth {
 
     this.profile.allocate += TreeGrowth.now() - t; t = TreeGrowth.now();
 
+    // 4b. the leader keeps pace with the growing envelope: height growth has priority
+    if (sp.curves) {
+      const envTop = envNow.baseHeight + envNow.height;
+      for (const b of this.buds) {
+        if (!b.alive || b.lateral || b.order !== 0) continue;
+        const y = this.py[b.node];
+        if (y < envTop - 0.5 && b.light > 0.05) {
+          const L0 = sp.internodeLength;
+          const need = Math.min(Math.floor(sp.maxShootLength / L0), Math.ceil((envTop - y) / L0));
+          if (b.v < need) { b.v = need; if (b.lastCnt === 0) b.lastCnt = -1; }
+        }
+      }
+    }
+
     // 5. shoot production
     const budCount = this.buds.length; // new buds appended during the loop are not grown this year
     for (let bi = 0; bi < budCount; bi++) {
       const b = this.buds[bi];
       if (!b.alive) continue;
-      if (b.v < 1 || this.nodeCount >= this.opts.maxNodes) { b.age++; if (b.age > sp.budLifespan && b.lateral) b.alive = false; continue; }
+      if (b.v < 1 || this.retainedThisSeason + (this.nodeCount - this.retainedAtStart) >= this.opts.maxNodes) { b.age++; if (b.age > sp.budLifespan && b.lateral) b.alive = false; continue; }
       this.growShoot(b, bi);
     }
 
@@ -297,6 +349,9 @@ export class TreeGrowth {
     // settled every few seasons with the accumulated angle: same droop, a third of the traversals
     if (sp.flexibility > 0 && (this.year + 1) % 3 === 0) this.applySag(3);
     this.profile.sag += TreeGrowth.now() - t;
+
+    // 9. compaction: fallen dead wood leaves the arrays so it stops consuming the node budget
+    this.compactIfNeeded();
     this.year++;
   }
 
@@ -459,6 +514,10 @@ export class TreeGrowth {
   private shed(): void {
     const sp = this.sp;
     const n = this.nodeCount;
+    // budget pressure: near the node budget, shaded interior twigs are shed more readily (twig turnover)
+    const pressure = Math.max(0, Math.min(1, (this.retainedThisSeason - 0.7 * this.opts.maxNodes) / (0.3 * this.opts.maxNodes)));
+    const threshold = sp.shedThreshold * (1 + 4 * pressure);
+    const years = pressure > 0.5 ? Math.max(1, sp.shedYears - 1) : sp.shedYears;
     // tips per subtree (live)
     const tips = new Int32Array(n);
     for (let i = n - 1; i >= 0; i--) {
@@ -472,8 +531,8 @@ export class TreeGrowth {
       if (!this.alive[i] || this.isMain[i]) continue; // only whole lateral branches are shed
       if (this.year - this.birthYear[i] < 2) continue;
       const perTip = tips[i] > 0 ? this.nodeLight[i] / tips[i] : 0;
-      if (perTip < sp.shedThreshold) this.lowLightYears[i]++; else this.lowLightYears[i] = 0;
-      if (this.lowLightYears[i] >= sp.shedYears) this.killSubtree(i);
+      if (perTip < threshold) this.lowLightYears[i]++; else this.lowLightYears[i] = 0;
+      if (this.lowLightYears[i] >= years) this.killSubtree(i);
     }
   }
 
@@ -502,12 +561,69 @@ export class TreeGrowth {
       if (i > 0) this.strands[this.parent[i]] += this.strands[i];
     }
     const inv = 1 / sp.daVinciExponent;
+    const rTrunk = this.trunkRadiusAt(this.year + 1);
+    if (rTrunk !== undefined && this.strands[0] > 0) {
+      // identity-driven: the trunk follows the DBH curve, the pipe model distributes it down the branches
+      const rootStrands = this.strands[0];
+      for (let i = 0; i < n; i++) {
+        if (!this.alive[i]) continue;
+        const r = Math.max(sp.tipRadius, rTrunk * Math.pow(this.strands[i] / rootStrands, inv));
+        this.radius[i] = Math.max(this.radius[i], r); // wood never shrinks
+      }
+      return;
+    }
     for (let i = 0; i < n; i++) {
       if (!this.alive[i]) continue;
       const age = this.year + 1 - this.birthYear[i];
       // wood never shrinks: heartwood laid down for tips that were later shed remains
       this.radius[i] = Math.max(this.radius[i], sp.tipRadius * Math.pow(this.strands[i], inv) + sp.radialGrowthPerYear * Math.max(0, age - 1));
     }
+  }
+
+  /** Number of nodes that are alive or still retained as dead wood (what the mesh will show). */
+  private retainedCount(): number {
+    const retain = this.sp.deadBranchYears ?? 0;
+    let n = 0;
+    for (let i = 0; i < this.parent.length; i++) if (this.alive[i] || (retain > 0 && this.year - this.deadYear[i] < retain)) n++;
+    return n;
+  }
+
+  /** Drop expired dead nodes from every array, remapping parents, children and buds. */
+  private compactIfNeeded(): void {
+    const n = this.parent.length;
+    if (n < 5000) return;
+    const retain = this.sp.deadBranchYears ?? 0;
+    const keep = new Uint8Array(n);
+    let kept = 0;
+    for (let i = 0; i < n; i++) {
+      if (this.alive[i]) keep[i] = 1;
+      else if (retain > 0 && this.deadYear[i] >= 0 && this.year - this.deadYear[i] < retain) { const p = this.parent[i]; keep[i] = p < 0 || keep[p] ? 1 : 0; }
+      kept += keep[i];
+    }
+    if (n - kept < n * 0.15) return; // not worth it yet
+    const remap = new Int32Array(n).fill(-1);
+    let j = 0;
+    for (let i = 0; i < n; i++) if (keep[i]) remap[i] = j++;
+    const pick = <T>(arr: T[]): T[] => { const out: T[] = new Array(kept); for (let i = 0; i < n; i++) if (keep[i]) out[remap[i]] = arr[i]; return out; };
+    this.parent = pick(this.parent).map((p) => (p < 0 ? -1 : remap[p]));
+    this.px = pick(this.px); this.py = pick(this.py); this.pz = pick(this.pz);
+    this.dx = pick(this.dx); this.dy = pick(this.dy); this.dz = pick(this.dz);
+    this.birthYear = pick(this.birthYear); this.order = pick(this.order); this.isMain = pick(this.isMain); this.alive = pick(this.alive);
+    this.children = pick(this.children).map((list) => list.filter((c) => keep[c]).map((c) => remap[c]));
+    this.mainChild = pick(this.mainChild).map((c) => (c >= 0 && keep[c] ? remap[c] : -1));
+    this.lowLightYears = pick(this.lowLightYears); this.sag = pick(this.sag); this.deadYear = pick(this.deadYear);
+    this.nodeQ = pick(this.nodeQ); this.nodeLight = pick(this.nodeLight); this.nodeV = pick(this.nodeV); this.strands = pick(this.strands); this.radius = pick(this.radius);
+    this.nodeBuds = pick(this.nodeBuds);
+    // buds on dropped nodes are dead already; remap the live ones and drop dead bud records
+    const liveBuds: Bud[] = [];
+    const budRemap = new Int32Array(this.buds.length).fill(-1);
+    for (let b = 0; b < this.buds.length; b++) {
+      const bud = this.buds[b];
+      if (!bud.alive || !keep[bud.node]) continue;
+      budRemap[b] = liveBuds.length; bud.node = remap[bud.node]; liveBuds.push(bud);
+    }
+    this.buds = liveBuds;
+    for (let i = 0; i < kept; i++) this.nodeBuds[i] = this.nodeBuds[i].map((b) => budRemap[b]).filter((b) => b >= 0);
   }
 
   /** Pack live nodes into a compact SoA skeleton (parents before children preserved). */

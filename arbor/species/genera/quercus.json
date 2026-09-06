@@ -1,0 +1,62 @@
+{
+  "id": "quercus",
+  "name": "Quercus (oaks)",
+  "template": "rauh",
+  "kernel": {
+    "apicalControl": 0.42,
+    "branchingAngle": 55,
+    "noise": 0.45,
+    "directionInertia": 0.8,
+    "gravitropism": 0.08,
+    "lateralGravitropism": 0.08,
+    "axisKink": 0.15,
+    "flexibility": 1.5e-08,
+    "sagMax": 0.6,
+    "lateralBudProbability": 0.45,
+    "shedThreshold": 0.1,
+    "shedYears": 4,
+    "tipRadius": 0.0025,
+    "deadBranchYears": 2
+  },
+  "leaf": {
+    "shape": "lobed",
+    "perNode": 7,
+    "maxShootAge": 2,
+    "maxBranchRadius": 0.012,
+    "color": [
+      0.11,
+      0.3,
+      0.06
+    ],
+    "autumnPigment": "brown",
+    "shapeParams": {
+      "aspect": 0.62,
+      "widestAt": 0.62,
+      "lobes": {
+        "count": 4,
+        "depth": 0.42,
+        "round": 0.95
+      },
+      "base": "cuneate",
+      "apex": "obtuse"
+    }
+  },
+  "bark": {
+    "family": "furrowed",
+    "scale": 1.5,
+    "color": [
+      0.3,
+      0.25,
+      0.2
+    ],
+    "roughness": 0.95,
+    "twigColor": [
+      0.28,
+      0.24,
+      0.18
+    ],
+    "twigRadius": 0.012
+  },
+  "crownShape": "spreading",
+  "crownBaseFraction": 0.15
+}

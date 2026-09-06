@@ -2,89 +2,34 @@
   "id": "quercus-robur",
   "name": "English Oak",
   "latinName": "Quercus robur",
-  "habit": "broadleaf",
-  "apicalControl": 0.42,
-  "resourceScale": 2.6,
-  "internodeLength": 0.28,
-  "maxShootLength": 0.7,
-  "perceptionAngle": 60,
-  "perceptionDistance": 5,
-  "occupancyRadius": 0.9,
-  "branchingAngle": 55,
-  "phyllotaxis": 137.5,
-  "branchingMode": "alternate",
-  "whorlCount": 0,
-  "lateralBudProbability": 0.45,
-  "budLifespan": 3,
-  "directionInertia": 0.8,
-  "phototropism": 0.9,
-  "gravitropism": 0.08,
-  "noise": 0.45,
-  "maxOrder": 10,
-  "shedThreshold": 0.1,
-  "shedYears": 4,
-  "daVinciExponent": 2.0,
-  "tipRadius": 0.0025,
-  "radialGrowthPerYear": 0.0022,
-  "crown": {
-    "shape": "spreading",
-    "height": 12,
-    "width": 13,
-    "baseHeight": 2.2
-  },
-  "leaf": {
-    "shape": "lobed",
-    "length": 0.11,
-    "width": 0.07,
-    "perNode": 7,
-    "maxShootAge": 2,
-    "maxBranchRadius": 0.012,
-    "color": [
-      0.11,
-      0.3,
-      0.06
-    ],
-    "autumnPigment": "brown",
-    "shapeParams": {
-      "aspect": 0.62,
-      "widestAt": 0.62,
-      "lobes": {
-        "count": 4,
-        "depth": 0.42,
-        "round": 0.95
-      },
-      "base": "cuneate",
-      "apex": "obtuse"
-    }
-  },
-  "phenology": {
-    "budburstGDD": 190,
-    "leafExpandDays": 28,
-    "senescenceDay": 285,
-    "senescenceDays": 35,
-    "abscissionDay": 305,
-    "abscissionDays": 35,
-    "evergreen": false
-  },
-  "bark": {
-    "color": [
-      0.3,
-      0.25,
-      0.2
-    ],
-    "roughness": 0.95,
-    "family": "furrowed",
-    "scale": 1.5,
-    "twigColor": [
-      0.28,
-      0.24,
-      0.18
-    ],
-    "twigRadius": 0.012
-  },
-  "lateralShootScale": 0.85,
-  "axisKink": 0.15,
-  "flexibility": 8e-09,
-  "sagMax": 0.35,
-  "deadBranchYears": 2
+  "genus": "quercus",
+  "identity": {
+    "heightAt": {
+      "20": 9,
+      "50": 20
+    },
+    "maxHeight": 35,
+    "dbhAt": {
+      "20": 18,
+      "50": 50
+    },
+    "crownWidthAt": {
+      "20": 7,
+      "50": 16
+    },
+    "leaf": {
+      "length": 0.11,
+      "width": 0.07
+    },
+    "phenology": {
+      "budburstDOY": 118,
+      "colouringDOY": 295,
+      "leafFallDOY": 315
+    },
+    "longevity": 600,
+    "referenceLatitude": 50,
+    "sources": [
+      "literature-typical values (open-grown, ~50°N); replace with Tallo (Jucker et al. 2022), national yield tables and PEP725 extracts (D2)"
+    ]
+  }
 }

@@ -8,13 +8,39 @@
  *   h/w       height / crown width
  *   time      wall time for the growth from scratch (ms)
  */
-import { TreeGrowth, getSpecies, SPECIES_IDS } from '../src/index.js';
+import { TreeGrowth, getSpecies, getSheet, SPECIES_IDS } from '../src/index.js';
 import { skeletonStats } from '../src/generate.js';
 
 const arg = (k: string, d: string) => (process.argv.find((a) => a.startsWith(k + '=')) ?? `${k}=${d}`).split('=')[1];
 const ages = arg('ages', '15,30,45').split(',').map(Number);
 const seed = Number(arg('seed', '7'));
 
+const identityMode = process.argv.includes('identity');
+if (identityMode) {
+  // compare the simulation with each species' identity sheet at its reference ages
+  console.log('| species | age | height sim/target m | crown width sim/target m | DBH sim/target cm | height err | width err | DBH err |');
+  console.log('|---|---|---|---|---|---|---|---|');
+  let worst = 0;
+  for (const id of SPECIES_IDS) {
+    const sp = getSpecies(id); const idn = getSheet(id).identity;
+    const refAges = [...new Set([...Object.keys(idn.heightAt), ...Object.keys(idn.dbhAt), ...Object.keys(idn.crownWidthAt)].map(Number))].sort((a, b) => a - b);
+    const g = new TreeGrowth(sp, seed);
+    let grown = 0;
+    for (const age of refAges) {
+      g.grow(age - grown); grown = age;
+      const st = skeletonStats(g.toSkeleton(), sp);
+      const hT = idn.heightAt[String(age)], wT = idn.crownWidthAt[String(age)], dT = idn.dbhAt[String(age)];
+      const dbhSim = st.trunkRadius * 200;
+      const pe = (sim: number, t?: number) => (t ? ((sim - t) / t) * 100 : NaN);
+      const eh = pe(st.height, hT), ew = pe(st.crownWidth, wT), ed = pe(dbhSim, dT);
+      for (const e of [eh, ew, ed]) if (Number.isFinite(e)) worst = Math.max(worst, Math.abs(e));
+      const f = (v: number) => (Number.isFinite(v) ? `${v >= 0 ? '+' : ''}${v.toFixed(0)}%` : '–');
+      console.log(`| ${sp.name} | ${age} | ${st.height.toFixed(1)} / ${hT ?? '–'} | ${st.crownWidth.toFixed(1)} / ${wT ?? '–'} | ${dbhSim.toFixed(0)} / ${dT ?? '–'} | ${f(eh)} | ${f(ew)} | ${f(ed)} |`);
+    }
+  }
+  console.log(`\nworst absolute error: ${worst.toFixed(0)}%`);
+  process.exit(0);
+}
 console.log('| species | age | nodes | tips | height m | width m | h/w | trunk r cm | pipe | fill | branch angle ° | time ms |');
 console.log('|---|---|---|---|---|---|---|---|---|---|---|---|');
 for (const id of SPECIES_IDS) {

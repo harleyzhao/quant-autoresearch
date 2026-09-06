@@ -2,88 +2,34 @@
   "id": "betula-pendula",
   "name": "Silver Birch",
   "latinName": "Betula pendula",
-  "habit": "broadleaf",
-  "apicalControl": 0.6,
-  "resourceScale": 3.0,
-  "internodeLength": 0.26,
-  "maxShootLength": 0.9,
-  "perceptionAngle": 55,
-  "perceptionDistance": 5,
-  "occupancyRadius": 1.0,
-  "branchingAngle": 38,
-  "phyllotaxis": 137.5,
-  "branchingMode": "alternate",
-  "whorlCount": 0,
-  "lateralBudProbability": 0.5,
-  "budLifespan": 2,
-  "directionInertia": 1.0,
-  "phototropism": 0.7,
-  "gravitropism": -0.22,
-  "noise": 0.35,
-  "maxOrder": 10,
-  "shedThreshold": 0.2,
-  "shedYears": 2,
-  "daVinciExponent": 2.1,
-  "tipRadius": 0.002,
-  "radialGrowthPerYear": 0.0016,
-  "crown": {
-    "shape": "ellipsoid",
-    "height": 15,
-    "width": 8,
-    "baseHeight": 2.5
-  },
-  "leaf": {
-    "shape": "ovate",
-    "length": 0.06,
-    "width": 0.045,
-    "perNode": 6,
-    "maxShootAge": 2,
-    "maxBranchRadius": 0.008,
-    "color": [
-      0.16,
-      0.36,
-      0.08
-    ],
-    "autumnPigment": "yellow",
-    "shapeParams": {
-      "aspect": 0.75,
-      "widestAt": 0.3,
-      "base": "truncate",
-      "apex": "acuminate",
-      "serration": {
-        "amplitude": 0.09,
-        "count": 16
-      }
-    }
-  },
-  "phenology": {
-    "budburstGDD": 120,
-    "leafExpandDays": 20,
-    "senescenceDay": 265,
-    "senescenceDays": 28,
-    "abscissionDay": 285,
-    "abscissionDays": 30,
-    "evergreen": false
-  },
-  "bark": {
-    "color": [
-      0.85,
-      0.84,
-      0.8
-    ],
-    "roughness": 0.7,
-    "family": "lenticel",
-    "scale": 1.2,
-    "twigColor": [
-      0.16,
-      0.12,
-      0.1
-    ],
-    "twigRadius": 0.008
-  },
-  "lateralShootScale": 0.9,
-  "axisKink": 0.12,
-  "flexibility": 1e-08,
-  "sagMax": 0.55,
-  "deadBranchYears": 2
+  "genus": "betula",
+  "identity": {
+    "heightAt": {
+      "20": 13,
+      "50": 22
+    },
+    "maxHeight": 28,
+    "dbhAt": {
+      "20": 16,
+      "50": 35
+    },
+    "crownWidthAt": {
+      "20": 5,
+      "50": 8
+    },
+    "leaf": {
+      "length": 0.06,
+      "width": 0.045
+    },
+    "phenology": {
+      "budburstDOY": 105,
+      "colouringDOY": 275,
+      "leafFallDOY": 295
+    },
+    "longevity": 90,
+    "referenceLatitude": 50,
+    "sources": [
+      "literature-typical values (open-grown, ~50°N); replace with Tallo (Jucker et al. 2022), national yield tables and PEP725 extracts (D2)"
+    ]
+  }
 }

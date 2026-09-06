@@ -1,0 +1,32 @@
+{
+  "id": "massart",
+  "name": "Massart model",
+  "description": "Monopodial trunk with rhythmic growth; plagiotropic (horizontal) lateral branches in true whorls. Spruces, firs, araucarias, Terminalia-like tiers.",
+  "kernel": {
+    "apicalControl": 0.85,
+    "resourceScale": 2.6,
+    "perceptionAngle": 50,
+    "perceptionDistance": 5,
+    "occupancyRadius": 1.0,
+    "phyllotaxis": 137.5,
+    "branchingMode": "whorled",
+    "whorlCount": 6,
+    "lateralBudProbability": 0.85,
+    "budLifespan": 2,
+    "directionInertia": 2.0,
+    "phototropism": 0.35,
+    "gravitropism": 0.15,
+    "lateralGravitropism": -0.06,
+    "lateralShootScale": 0.45,
+    "axisKink": 0.0,
+    "flexibility": 1.2e-08,
+    "sagMax": 0.45,
+    "noise": 0.1,
+    "maxOrder": 10,
+    "shedThreshold": 0.16,
+    "shedYears": 3,
+    "daVinciExponent": 2.0,
+    "tipRadius": 0.0028,
+    "deadBranchYears": 8
+  }
+}

@@ -11,6 +11,8 @@ export class MarkerField {
   readonly y: Float32Array;
   readonly z: Float32Array;
   readonly alive: Uint8Array;
+  /** 1 = not yet inside the age-scaled envelope; never free until unlocked */
+  readonly locked: Uint8Array;
   /** Permanently removed markers (e.g. the juvenile zone after canopy closure); never revived by occupancy refreshes. */
   readonly removed: Uint8Array;
   readonly count: number;
@@ -29,6 +31,7 @@ export class MarkerField {
     this.y = new Float32Array(this.count);
     this.z = new Float32Array(this.count);
     this.alive = new Uint8Array(this.count).fill(1);
+    this.locked = new Uint8Array(this.count);
     this.removed = new Uint8Array(this.count);
     this.remaining = this.count;
     this.cell = cellSize;
@@ -137,19 +140,32 @@ export class MarkerField {
                 if (dx * dx + dy * dy + dz * dz <= r2) { occupied = true; break outer; }
               }
       }
-      const free = !occupied && !this.removed[m];
+      const free = !occupied && !this.removed[m] && !this.locked[m];
       this.alive[m] = free ? 1 : 0;
       if (free) alive++;
     }
     this.remaining = alive;
   }
 
-  /** Mark every marker free again (except permanently removed ones). */
+  /** Mark every unlocked marker free again. */
   resetOccupancy(): void {
     let n = 0;
-    for (let i = 0; i < this.count; i++) { const f = this.removed[i] ? 0 : 1; this.alive[i] = f; n += f; }
+    for (let i = 0; i < this.count; i++) { const a = this.locked[i] || this.removed[i] ? 0 : 1; this.alive[i] = a; n += a; }
     this.remaining = n;
   }
+
+  /** Unlock markers matching the predicate (age-scaled envelope); they become free. Returns number unlocked. */
+  unlockWhere(pred: (x: number, y: number, z: number) => boolean): number {
+    let n = 0;
+    for (let i = 0; i < this.count; i++) {
+      if (!this.locked[i]) continue;
+      if (pred(this.x[i], this.y[i], this.z[i])) { this.locked[i] = 0; if (!this.removed[i]) { this.alive[i] = 1; this.remaining++; } n++; }
+    }
+    return n;
+  }
+
+  /** Lock every marker (before the first unlock pass when an age curve is used). */
+  lockAll(): void { this.locked.fill(1); this.alive.fill(0); this.remaining = 0; }
 
   /** Permanently remove every marker for which `pred` is true. */
   removeWhere(pred: (x: number, y: number, z: number) => boolean): number {

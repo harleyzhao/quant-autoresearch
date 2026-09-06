@@ -2,85 +2,33 @@
   "id": "picea-abies",
   "name": "Norway Spruce",
   "latinName": "Picea abies",
-  "habit": "conifer",
-  "apicalControl": 0.85,
-  "resourceScale": 2.6,
-  "internodeLength": 0.3,
-  "maxShootLength": 0.8,
-  "perceptionAngle": 50,
-  "perceptionDistance": 5,
-  "occupancyRadius": 0.9,
-  "branchingAngle": 80,
-  "phyllotaxis": 137.5,
-  "branchingMode": "whorled",
-  "whorlCount": 6,
-  "lateralBudProbability": 0.85,
-  "budLifespan": 2,
-  "directionInertia": 2.0,
-  "phototropism": 0.35,
-  "gravitropism": 0.15,
-  "noise": 0.1,
-  "maxOrder": 10,
-  "shedThreshold": 0.16,
-  "shedYears": 3,
-  "daVinciExponent": 2.0,
-  "tipRadius": 0.0028,
-  "radialGrowthPerYear": 0.0018,
-  "crown": {
-    "shape": "cone",
-    "height": 22,
-    "width": 7,
-    "baseHeight": 0.6
-  },
-  "leaf": {
-    "shape": "needle",
-    "length": 0.025,
-    "width": 0.003,
-    "perNode": 1,
-    "maxShootAge": 5,
-    "maxBranchRadius": 0.008,
-    "color": [
-      0.07,
-      0.2,
-      0.08
-    ],
-    "autumnPigment": "none",
-    "shapeParams": {
-      "needle": {
-        "count": 240,
-        "angle": 60
-      }
-    }
-  },
-  "phenology": {
-    "budburstGDD": 200,
-    "leafExpandDays": 35,
-    "senescenceDay": 300,
-    "senescenceDays": 40,
-    "abscissionDay": 400,
-    "abscissionDays": 30,
-    "evergreen": true
-  },
-  "bark": {
-    "color": [
-      0.36,
-      0.28,
-      0.22
-    ],
-    "roughness": 0.9,
-    "family": "plated",
-    "scale": 2.5,
-    "twigColor": [
-      0.36,
-      0.26,
-      0.18
-    ],
-    "twigRadius": 0.01
-  },
-  "lateralShootScale": 0.45,
-  "axisKink": 0.0,
-  "flexibility": 1.2e-08,
-  "sagMax": 0.45,
-  "lateralGravitropism": -0.06,
-  "deadBranchYears": 8
+  "genus": "picea",
+  "identity": {
+    "heightAt": {
+      "20": 10,
+      "50": 26
+    },
+    "maxHeight": 50,
+    "dbhAt": {
+      "20": 16,
+      "50": 40
+    },
+    "crownWidthAt": {
+      "20": 4,
+      "50": 7
+    },
+    "leaf": {
+      "length": 0.025,
+      "width": 0.003
+    },
+    "phenology": {
+      "budburstDOY": 130,
+      "evergreen": true
+    },
+    "longevity": 300,
+    "referenceLatitude": 50,
+    "sources": [
+      "literature-typical values (open-grown, ~50°N); replace with Tallo (Jucker et al. 2022), national yield tables and PEP725 extracts (D2)"
+    ]
+  }
 }

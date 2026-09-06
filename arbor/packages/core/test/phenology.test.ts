@@ -31,7 +31,7 @@ describe('phenology', () => {
     const pineWinter = generate(getSpecies('pinus-sylvestris'), ind(7, 15, 20));
     expect(oakSummer.leaves.count).toBeGreaterThan(100);
     expect(oakWinter.leaves.count).toBe(0);
-    expect(pineWinter.leaves.count).toBeGreaterThan(100);
+    expect(pineWinter.leaves.count).toBeGreaterThan(30); // needle-shoot cards, few on a 15-year pine
   });
   it('autumn leaves are less green than summer leaves', () => {
     const summer = generate(getSpecies('betula-pendula'), ind(5, 15, 200));

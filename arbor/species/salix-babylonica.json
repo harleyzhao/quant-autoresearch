@@ -2,90 +2,34 @@
   "id": "salix-babylonica",
   "name": "Weeping Willow",
   "latinName": "Salix babylonica",
-  "habit": "broadleaf",
-  "apicalControl": 0.6,
-  "resourceScale": 3.4,
-  "internodeLength": 0.3,
-  "maxShootLength": 1.2,
-  "perceptionAngle": 65,
-  "perceptionDistance": 5,
-  "occupancyRadius": 0.9,
-  "branchingAngle": 35,
-  "phyllotaxis": 137.5,
-  "branchingMode": "alternate",
-  "whorlCount": 0,
-  "lateralBudProbability": 0.6,
-  "budLifespan": 3,
-  "directionInertia": 1.0,
-  "phototropism": 0.7,
-  "gravitropism": 0.4,
-  "noise": 0.25,
-  "maxOrder": 10,
-  "shedThreshold": 0.12,
-  "shedYears": 3,
-  "daVinciExponent": 2.0,
-  "tipRadius": 0.002,
-  "radialGrowthPerYear": 0.0025,
-  "crown": {
-    "shape": "spreading",
-    "height": 11,
-    "width": 14,
-    "baseHeight": 1.5
-  },
-  "leaf": {
-    "shape": "lanceolate",
-    "length": 0.12,
-    "width": 0.015,
-    "perNode": 8,
-    "maxShootAge": 2,
-    "maxBranchRadius": 0.008,
-    "color": [
-      0.2,
-      0.38,
-      0.12
-    ],
-    "autumnPigment": "yellow",
-    "shapeParams": {
-      "aspect": 0.62,
-      "widestAt": 0.62,
-      "lobes": {
-        "count": 4,
-        "depth": 0.42,
-        "round": 0.95
-      },
-      "base": "cuneate",
-      "apex": "obtuse"
-    }
-  },
-  "phenology": {
-    "budburstGDD": 90,
-    "leafExpandDays": 20,
-    "senescenceDay": 290,
-    "senescenceDays": 30,
-    "abscissionDay": 315,
-    "abscissionDays": 30,
-    "evergreen": false
-  },
-  "bark": {
-    "color": [
-      0.4,
-      0.34,
-      0.26
-    ],
-    "roughness": 0.9,
-    "family": "furrowed",
-    "scale": 1.4,
-    "twigColor": [
-      0.45,
-      0.38,
-      0.18
-    ],
-    "twigRadius": 0.008
-  },
-  "lateralShootScale": 1.0,
-  "axisKink": 0.1,
-  "flexibility": 2e-08,
-  "sagMax": 0.7,
-  "lateralGravitropism": -0.1,
-  "deadBranchYears": 2
+  "genus": "salix",
+  "identity": {
+    "heightAt": {
+      "20": 12,
+      "50": 15
+    },
+    "maxHeight": 18,
+    "dbhAt": {
+      "20": 35,
+      "50": 70
+    },
+    "crownWidthAt": {
+      "20": 10,
+      "50": 15
+    },
+    "leaf": {
+      "length": 0.12,
+      "width": 0.015
+    },
+    "phenology": {
+      "budburstDOY": 95,
+      "colouringDOY": 300,
+      "leafFallDOY": 320
+    },
+    "longevity": 60,
+    "referenceLatitude": 50,
+    "sources": [
+      "literature-typical values (open-grown, ~50°N); replace with Tallo (Jucker et al. 2022), national yield tables and PEP725 extracts (D2)"
+    ]
+  }
 }

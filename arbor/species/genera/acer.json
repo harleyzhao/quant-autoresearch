@@ -1,0 +1,64 @@
+{
+  "id": "acer",
+  "name": "Acer (maples)",
+  "template": "rauh",
+  "kernel": {
+    "apicalControl": 0.5,
+    "branchingAngle": 42,
+    "phyllotaxis": 180,
+    "noise": 0.3,
+    "directionInertia": 0.9,
+    "phototropism": 0.8,
+    "gravitropism": 0.15,
+    "lateralGravitropism": 0.1,
+    "axisKink": 0.1,
+    "flexibility": 8e-09,
+    "sagMax": 0.4,
+    "shedThreshold": 0.1,
+    "shedYears": 3,
+    "tipRadius": 0.0016,
+    "deadBranchYears": 2
+  },
+  "leaf": {
+    "shape": "palmate",
+    "perNode": 4,
+    "maxShootAge": 2,
+    "maxBranchRadius": 0.01,
+    "color": [
+      0.12,
+      0.32,
+      0.07
+    ],
+    "autumnPigment": "orange",
+    "shapeParams": {
+      "aspect": 1.15,
+      "lobes": {
+        "count": 5,
+        "depth": 0.45,
+        "round": 0.1
+      },
+      "serration": {
+        "amplitude": 0.05,
+        "count": 5
+      }
+    }
+  },
+  "bark": {
+    "family": "ridged",
+    "scale": 2.0,
+    "color": [
+      0.36,
+      0.32,
+      0.28
+    ],
+    "roughness": 0.9,
+    "twigColor": [
+      0.32,
+      0.28,
+      0.2
+    ],
+    "twigRadius": 0.01
+  },
+  "crownShape": "ellipsoid",
+  "crownBaseFraction": 0.16
+}

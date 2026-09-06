@@ -2,85 +2,33 @@
   "id": "pinus-sylvestris",
   "name": "Scots Pine",
   "latinName": "Pinus sylvestris",
-  "habit": "conifer",
-  "apicalControl": 0.78,
-  "resourceScale": 2.6,
-  "internodeLength": 0.32,
-  "maxShootLength": 0.9,
-  "perceptionAngle": 50,
-  "perceptionDistance": 5,
-  "occupancyRadius": 1.0,
-  "branchingAngle": 75,
-  "phyllotaxis": 137.5,
-  "branchingMode": "whorled",
-  "whorlCount": 5,
-  "lateralBudProbability": 0.85,
-  "budLifespan": 2,
-  "directionInertia": 2.0,
-  "phototropism": 0.4,
-  "gravitropism": 0.15,
-  "noise": 0.12,
-  "maxOrder": 10,
-  "shedThreshold": 0.18,
-  "shedYears": 2,
-  "daVinciExponent": 2.0,
-  "tipRadius": 0.003,
-  "radialGrowthPerYear": 0.0018,
-  "crown": {
-    "shape": "cone",
-    "height": 16,
-    "width": 8,
-    "baseHeight": 1.0
-  },
-  "leaf": {
-    "shape": "needle",
-    "length": 0.06,
-    "width": 0.004,
-    "perNode": 1,
-    "maxShootAge": 3,
-    "maxBranchRadius": 0.009,
-    "color": [
-      0.09,
-      0.24,
-      0.1
-    ],
-    "autumnPigment": "none",
-    "shapeParams": {
-      "needle": {
-        "count": 160,
-        "angle": 50
-      }
-    }
-  },
-  "phenology": {
-    "budburstGDD": 220,
-    "leafExpandDays": 40,
-    "senescenceDay": 300,
-    "senescenceDays": 40,
-    "abscissionDay": 400,
-    "abscissionDays": 30,
-    "evergreen": true
-  },
-  "bark": {
-    "color": [
-      0.45,
-      0.28,
-      0.16
-    ],
-    "roughness": 0.9,
-    "family": "plated",
-    "scale": 1.5,
-    "twigColor": [
-      0.32,
-      0.22,
-      0.14
-    ],
-    "twigRadius": 0.012
-  },
-  "lateralShootScale": 0.5,
-  "lateralGravitropism": 0.03,
-  "axisKink": 0.0,
-  "flexibility": 6e-09,
-  "sagMax": 0.3,
-  "deadBranchYears": 6
+  "genus": "pinus",
+  "identity": {
+    "heightAt": {
+      "20": 9,
+      "50": 20
+    },
+    "maxHeight": 35,
+    "dbhAt": {
+      "20": 15,
+      "50": 38
+    },
+    "crownWidthAt": {
+      "20": 4,
+      "50": 8
+    },
+    "leaf": {
+      "length": 0.06,
+      "width": 0.004
+    },
+    "phenology": {
+      "budburstDOY": 135,
+      "evergreen": true
+    },
+    "longevity": 300,
+    "referenceLatitude": 50,
+    "sources": [
+      "literature-typical values (open-grown, ~50°N); replace with Tallo (Jucker et al. 2022), national yield tables and PEP725 extracts (D2)"
+    ]
+  }
 }

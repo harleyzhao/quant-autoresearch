@@ -1,0 +1,65 @@
+{
+  "id": "pinus",
+  "name": "Pinus (pines)",
+  "template": "rauh",
+  "kernel": {
+    "apicalControl": 0.78,
+    "branchingMode": "whorled",
+    "whorlCount": 5,
+    "branchingAngle": 75,
+    "lateralBudProbability": 0.85,
+    "budLifespan": 2,
+    "directionInertia": 2.0,
+    "phototropism": 0.4,
+    "gravitropism": 0.15,
+    "lateralGravitropism": 0.03,
+    "lateralShootScale": 0.5,
+    "axisKink": 0.0,
+    "flexibility": 1e-08,
+    "sagMax": 0.35,
+    "noise": 0.12,
+    "shedThreshold": 0.18,
+    "shedYears": 2,
+    "tipRadius": 0.003,
+    "deadBranchYears": 6,
+    "perceptionAngle": 50,
+    "occupancyRadius": 1.0,
+    "resourceScale": 2.6
+  },
+  "leaf": {
+    "shape": "needle",
+    "perNode": 1,
+    "maxShootAge": 3,
+    "maxBranchRadius": 0.009,
+    "color": [
+      0.09,
+      0.24,
+      0.1
+    ],
+    "autumnPigment": "none",
+    "shapeParams": {
+      "needle": {
+        "count": 160,
+        "angle": 50
+      }
+    }
+  },
+  "bark": {
+    "family": "plated",
+    "scale": 1.5,
+    "color": [
+      0.45,
+      0.28,
+      0.16
+    ],
+    "roughness": 0.9,
+    "twigColor": [
+      0.32,
+      0.22,
+      0.14
+    ],
+    "twigRadius": 0.012
+  },
+  "crownShape": "cone",
+  "crownBaseFraction": 0.06
+}

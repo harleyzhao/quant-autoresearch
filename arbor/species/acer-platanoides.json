@@ -2,90 +2,34 @@
   "id": "acer-platanoides",
   "name": "Norway Maple",
   "latinName": "Acer platanoides",
-  "habit": "broadleaf",
-  "apicalControl": 0.5,
-  "resourceScale": 2.8,
-  "internodeLength": 0.24,
-  "maxShootLength": 0.65,
-  "perceptionAngle": 60,
-  "perceptionDistance": 5,
-  "occupancyRadius": 0.9,
-  "branchingAngle": 42,
-  "phyllotaxis": 180,
-  "branchingMode": "alternate",
-  "whorlCount": 0,
-  "lateralBudProbability": 0.5,
-  "budLifespan": 3,
-  "directionInertia": 0.9,
-  "phototropism": 0.8,
-  "gravitropism": 0.15,
-  "lateralShootScale": 0.8,
-  "axisKink": 0.1,
-  "flexibility": 8e-09,
-  "sagMax": 0.4,
-  "noise": 0.3,
-  "maxOrder": 10,
-  "shedThreshold": 0.1,
-  "shedYears": 3,
-  "daVinciExponent": 2.0,
-  "tipRadius": 0.0015,
-  "radialGrowthPerYear": 0.002,
-  "crown": {
-    "shape": "ellipsoid",
-    "height": 13,
-    "width": 12,
-    "baseHeight": 2.4
-  },
-  "leaf": {
-    "shape": "palmate",
-    "length": 0.14,
-    "width": 0.16,
-    "perNode": 4,
-    "maxShootAge": 2,
-    "maxBranchRadius": 0.01,
-    "color": [
-      0.12,
-      0.32,
-      0.07
-    ],
-    "autumnPigment": "orange",
-    "shapeParams": {
-      "aspect": 1.15,
-      "lobes": {
-        "count": 5,
-        "depth": 0.45,
-        "round": 0.1
-      },
-      "serration": {
-        "amplitude": 0.05,
-        "count": 5
-      }
-    }
-  },
-  "phenology": {
-    "budburstGDD": 150,
-    "leafExpandDays": 24,
-    "senescenceDay": 275,
-    "senescenceDays": 30,
-    "abscissionDay": 295,
-    "abscissionDays": 28,
-    "evergreen": false
-  },
-  "bark": {
-    "color": [
-      0.36,
-      0.32,
-      0.28
-    ],
-    "roughness": 0.9,
-    "family": "ridged",
-    "scale": 2.0,
-    "twigColor": [
-      0.32,
-      0.28,
-      0.2
-    ],
-    "twigRadius": 0.01
-  },
-  "deadBranchYears": 2
+  "genus": "acer",
+  "identity": {
+    "heightAt": {
+      "20": 12,
+      "50": 22
+    },
+    "maxHeight": 28,
+    "dbhAt": {
+      "20": 20,
+      "50": 55
+    },
+    "crownWidthAt": {
+      "20": 7,
+      "50": 14
+    },
+    "leaf": {
+      "length": 0.14,
+      "width": 0.16
+    },
+    "phenology": {
+      "budburstDOY": 110,
+      "colouringDOY": 285,
+      "leafFallDOY": 300
+    },
+    "longevity": 200,
+    "referenceLatitude": 50,
+    "sources": [
+      "literature-typical values (open-grown, ~50°N); replace with Tallo (Jucker et al. 2022), national yield tables and PEP725 extracts (D2)"
+    ]
+  }
 }

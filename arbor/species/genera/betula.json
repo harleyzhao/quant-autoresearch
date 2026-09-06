@@ -1,0 +1,62 @@
+{
+  "id": "betula",
+  "name": "Betula (birches)",
+  "template": "rauh",
+  "kernel": {
+    "apicalControl": 0.6,
+    "branchingAngle": 38,
+    "noise": 0.35,
+    "gravitropism": 0.15,
+    "lateralGravitropism": -0.22,
+    "flexibility": 1e-08,
+    "sagMax": 0.55,
+    "lateralBudProbability": 0.5,
+    "budLifespan": 2,
+    "shedThreshold": 0.2,
+    "shedYears": 2,
+    "daVinciExponent": 2.1,
+    "tipRadius": 0.002,
+    "deadBranchYears": 2,
+    "resourceScale": 3.0
+  },
+  "leaf": {
+    "shape": "ovate",
+    "perNode": 6,
+    "maxShootAge": 2,
+    "maxBranchRadius": 0.008,
+    "color": [
+      0.16,
+      0.36,
+      0.08
+    ],
+    "autumnPigment": "yellow",
+    "shapeParams": {
+      "aspect": 0.75,
+      "widestAt": 0.3,
+      "base": "truncate",
+      "apex": "acuminate",
+      "serration": {
+        "amplitude": 0.09,
+        "count": 16
+      }
+    }
+  },
+  "bark": {
+    "family": "lenticel",
+    "scale": 1.2,
+    "color": [
+      0.85,
+      0.84,
+      0.8
+    ],
+    "roughness": 0.7,
+    "twigColor": [
+      0.16,
+      0.12,
+      0.1
+    ],
+    "twigRadius": 0.008
+  },
+  "crownShape": "ellipsoid",
+  "crownBaseFraction": 0.17
+}
