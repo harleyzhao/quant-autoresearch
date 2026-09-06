@@ -7,11 +7,18 @@ import { WebGPURenderer } from 'three/webgpu';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { Pane } from 'tweakpane';
-import { SPECIES, SPECIES_IDS, type CrownShape, type IndividualParams, type PlantModel, type SpeciesParams } from '@arbor/core';
+import { SPECIES, SPECIES_IDS, type BarkFamily, type CrownShape, type IndividualParams, type PlantModel, type SpeciesParams } from '@arbor/core';
 import type { GenerateRequest, GenerateResponse } from './worker.js';
+import { leafTextures, type LeafTextures } from './leafTexture.js';
+import { barkTextures, type BarkTextures } from './barkTexture.js';
 
 declare global {
-  interface Window { __arborReady?: boolean; __arborStats?: PlantModel['stats'] & { stage: string } }
+  interface Window {
+    __arborReady?: boolean;
+    __arborStats?: PlantModel['stats'] & { stage: string };
+    /** Baked textures of the current species as PNG data URLs (null entries when a map does not exist, e.g. needle leaves). */
+    __arborDebugTextures?: () => { leafAlbedo: string | null; leafNormal: string | null; barkAlbedo: string | null; barkNormal: string | null };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -174,22 +181,72 @@ let branchMesh: THREE.Mesh | null = null;
 let leafMesh: THREE.InstancedMesh | null = null;
 let currentModel: PlantModel | null = null;
 
-/** Leaf card in the XZ plane: petiole at the origin, tip at +Z*length, blade normal +Y. */
-function leafGeometry(sp: SpeciesParams): THREE.BufferGeometry {
-  const L = sp.leaf.length, W = sp.leaf.width;
-  if (sp.leaf.shape === 'needle') return needleBrushGeometry(L, Math.max(W, 0.003), sp.internodeLength * 0.6);
-  // outline as [x, z] pairs, counter-clockwise when viewed from +Y
-  const pts: [number, number][] = [[0, 0], [-0.30 * W, 0.18 * L], [-0.50 * W, 0.42 * L], [-0.38 * W, 0.72 * L], [0, L], [0.38 * W, 0.72 * L], [0.50 * W, 0.42 * L], [0.30 * W, 0.18 * L]];
-  const pos = new Float32Array(pts.length * 3), nrm = new Float32Array(pts.length * 3), uv = new Float32Array(pts.length * 2);
-  pts.forEach(([x, z], i) => { pos.set([x, 0, z], i * 3); nrm.set([0, 1, 0], i * 3); uv.set([x / W + 0.5, z / L], i * 2); });
-  const idx: number[] = [];
-  for (let i = 1; i < pts.length - 1; i++) idx.push(0, i, i + 1); // fan from the petiole
+// ---------------------------------------------------------------------------
+// Leaf cards: baked silhouette textures (leafTexture.ts) on a curled, subdivided card
+// ---------------------------------------------------------------------------
+interface LeafAssets { geometry: THREE.BufferGeometry; material: THREE.MeshStandardMaterial; textures: LeafTextures | null }
+const leafAssetCache = new Map<string, LeafAssets>();
+
+/**
+ * Leaf card in the kernel's leaf frame: petiole at the origin, tip toward +Z (unit-frame +y),
+ * +X across (unit-frame x), blade normal +Y. Unit length 1 <-> species leaf length in metres;
+ * the card spans the silhouette bbox (aspect preserved) with uvs matching the baked texture.
+ */
+function leafCardGeometry(sp: SpeciesParams, tex: LeafTextures): THREE.BufferGeometry {
+  const L = sp.leaf.length;
+  const { minX, maxX, minY, maxY } = tex.bbox;
+  const NX = 2, NZ = 6; // across, along
+  const halfW = Math.max(1e-3, Math.max(Math.abs(minX), Math.abs(maxX)));
+  const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+  for (let j = 0; j <= NZ; j++) {
+    const uy = minY + ((maxY - minY) * j) / NZ;
+    const t = Math.max(0, uy) / Math.max(1e-3, maxY); // 0 at the petiole junction, 1 at the tip
+    for (let i = 0; i <= NX; i++) {
+      const ux = minX + ((maxX - minX) * i) / NX;
+      const droop = -0.12 * L * t * t; // tips droop
+      const across = 0.04 * L * ((ux * ux) / (halfW * halfW)); // edges curl up
+      pos.push(ux * L, droop + across, uy * L);
+      const [u, v] = tex.unitToUv(ux, uy);
+      uv.push(u, v);
+    }
+  }
+  const row = NX + 1;
+  for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
+    const a = j * row + i, b = a + 1, c = a + row, d = c + 1;
+    idx.push(a, c, d, a, d, b); // CCW seen from +Y
+  }
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
+  g.computeVertexNormals();
   return g;
+}
+
+/** Geometry + material for a species' leaves; baked once and reused across models. */
+function leafAssets(sp: SpeciesParams): LeafAssets {
+  const hit = leafAssetCache.get(sp.id);
+  if (hit) return hit;
+  let out: LeafAssets;
+  if (sp.leaf.shape === 'needle') {
+    const geometry = needleBrushGeometry(sp.leaf.length, Math.max(sp.leaf.width, 0.003), sp.internodeLength * 0.6);
+    const material = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.7, metalness: 0 });
+    out = { geometry, material, textures: null };
+  } else {
+    const t0 = performance.now();
+    const textures = leafTextures(sp);
+    const geometry = leafCardGeometry(sp, textures);
+    const material = new THREE.MeshStandardMaterial({
+      map: textures.map, normalMap: textures.normalMap, normalScale: new THREE.Vector2(0.6, 0.6),
+      alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.55, metalness: 0,
+    });
+    material.color.setRGB(1.2, 1.2, 1.2, THREE.LinearSRGBColorSpace); // compensate the 0.8 lamina base so the instance colour is the hue
+    // alpha-tested shadows: WebGLShadowMap copies map + alphaTest into its depth material, so no customDepthMaterial is needed
+    console.log(`leaf textures for ${sp.id} baked in ${(performance.now() - t0).toFixed(0)} ms`);
+    out = { geometry, material, textures };
+  }
+  leafAssetCache.set(sp.id, out);
+  return out;
 }
 
 /**
@@ -224,13 +281,57 @@ function needleBrushGeometry(L: number, W: number, brushLen: number, count = 56)
   return g;
 }
 
-function disposeTree(): void {
-  for (const m of [branchMesh, leafMesh]) {
-    if (!m) continue;
-    treeGroup.remove(m);
-    m.geometry.dispose();
-    (m.material as THREE.Material).dispose();
+// ---------------------------------------------------------------------------
+// Bark: tiling family textures (barkTexture.ts), tinted per species
+// ---------------------------------------------------------------------------
+const BARK_FULL_SIZE = 1024, BARK_QUICK_SIZE = 512;
+const barkMaterialCache = new Map<string, { material: THREE.MeshStandardMaterial; family: BarkFamily; textures: BarkTextures }>();
+const barkUpgradeScheduled = new Set<BarkFamily>();
+const maxAnisotropy = 'capabilities' in renderer ? renderer.capabilities.getMaxAnisotropy() : renderer.getMaxAnisotropy();
+
+function applyBarkTextures(mat: THREE.MeshStandardMaterial, tex: BarkTextures, sp: SpeciesParams): void {
+  mat.map = tex.map; mat.normalMap = tex.normalMap; mat.roughnessMap = tex.roughnessMap;
+  // u is metric around the circumference (core mesher) and v = metres * 2: one tile ~ 1/bark.scale m along v
+  const rep = (sp.bark.scale ?? 1.5) / 2;
+  for (const t of [mat.map, mat.normalMap, mat.roughnessMap]) t.repeat.set(rep, rep);
+  mat.needsUpdate = true;
+}
+
+/** Bark material per species: cached; baked at 512² first and upgraded to 1024² in an idle callback. */
+function barkMaterial(sp: SpeciesParams): THREE.MeshStandardMaterial {
+  const hit = barkMaterialCache.get(sp.id);
+  if (hit) return hit.material;
+  const family: BarkFamily = sp.bark.family ?? 'smooth';
+  const t0 = performance.now();
+  const textures = barkTextures(family, BARK_QUICK_SIZE, maxAnisotropy);
+  console.log(`bark textures for ${family}@${BARK_QUICK_SIZE} baked in ${(performance.now() - t0).toFixed(0)} ms`);
+  const material = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, normalScale: new THREE.Vector2(1, 1) });
+  // species tint relative to a neutral grey, applied partially so the family albedo keeps its character
+  const tint = sp.bark.color.map((c) => Math.min(1.5, Math.max(0.5, 1 + (c / 0.4 - 1) * 0.6))) as [number, number, number];
+  material.color.setRGB(tint[0], tint[1], tint[2], THREE.LinearSRGBColorSpace);
+  applyBarkTextures(material, textures, sp);
+  const entry = { material, family, textures };
+  barkMaterialCache.set(sp.id, entry);
+  if (!barkUpgradeScheduled.has(family)) {
+    barkUpgradeScheduled.add(family);
+    const idle = (cb: () => void) => (typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(cb, { timeout: 2000 }) : window.setTimeout(cb, 200));
+    idle(() => {
+      const t1 = performance.now();
+      const full = barkTextures(family, BARK_FULL_SIZE, maxAnisotropy);
+      console.log(`bark textures for ${family}@${BARK_FULL_SIZE} baked in ${(performance.now() - t1).toFixed(0)} ms`);
+      for (const [id, e] of barkMaterialCache) {
+        if (e.family !== family || e.textures.size >= BARK_FULL_SIZE) continue;
+        e.textures = full;
+        applyBarkTextures(e.material, full, SPECIES[id]);
+      }
+    });
   }
+  return material;
+}
+
+function disposeTree(): void {
+  for (const m of [branchMesh, leafMesh]) if (m) treeGroup.remove(m);
+  branchMesh?.geometry.dispose(); // per-model; leaf geometry and all materials/textures are cached per species
   branchMesh = leafMesh = null;
 }
 
@@ -245,16 +346,14 @@ function setModel(model: PlantModel, reframe: boolean): void {
   bg.setAttribute('normal', new THREE.BufferAttribute(model.branches.normal, 3));
   bg.setAttribute('uv', new THREE.BufferAttribute(model.branches.uv, 2));
   bg.setIndex(new THREE.BufferAttribute(model.branches.index, 1));
-  const barkMat = new THREE.MeshStandardMaterial({ roughness: sp.bark.roughness, metalness: 0 });
-  barkMat.color.setRGB(sp.bark.color[0], sp.bark.color[1], sp.bark.color[2], THREE.LinearSRGBColorSpace);
-  branchMesh = new THREE.Mesh(bg, barkMat);
+  branchMesh = new THREE.Mesh(bg, barkMaterial(sp));
   branchMesh.name = 'branches';
   branchMesh.castShadow = branchMesh.receiveShadow = true;
   treeGroup.add(branchMesh);
 
   const lv = model.leaves;
-  const leafMat = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.7, metalness: 0, vertexColors: false });
-  leafMesh = new THREE.InstancedMesh(leafGeometry(sp), leafMat, Math.max(1, lv.count));
+  const la = leafAssets(sp);
+  leafMesh = new THREE.InstancedMesh(la.geometry, la.material, Math.max(1, lv.count));
   leafMesh.name = 'leaves';
   leafMesh.castShadow = true;
   leafMesh.count = lv.count;
@@ -435,6 +534,16 @@ function screenshot(): void {
   const name = currentModel ? `arbor-${currentModel.species.id}-${currentModel.individual.seed}.png` : 'arbor.png';
   renderer.domElement.toBlob((blob) => { if (blob) download(blob, name); }, 'image/png');
 }
+
+window.__arborDebugTextures = () => {
+  const sp = currentModel?.species;
+  const leaf = sp ? leafAssetCache.get(sp.id)?.textures?.debugCanvases : undefined;
+  const bark = sp ? barkMaterialCache.get(sp.id)?.textures.debugCanvases : undefined;
+  return {
+    leafAlbedo: leaf?.albedo.toDataURL('image/png') ?? null, leafNormal: leaf?.normal.toDataURL('image/png') ?? null,
+    barkAlbedo: bark?.albedo.toDataURL('image/png') ?? null, barkNormal: bark?.normal.toDataURL('image/png') ?? null,
+  };
+};
 
 addEventListener('hashchange', () => { readHash(); pane.refresh(); reframeNext = true; requestGenerate(); });
 requestGenerate();

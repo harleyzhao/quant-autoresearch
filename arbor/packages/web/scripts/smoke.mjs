@@ -2,7 +2,7 @@
 // (SwiftShader WebGL2) and writes screenshots to smoke-out/. Exits non-zero on console
 // errors or timeouts. Assumes `vite build` has already produced dist/.
 import { spawn } from 'node:child_process';
-import { mkdirSync, existsSync, readdirSync } from 'node:fs';
+import { mkdirSync, existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -100,6 +100,14 @@ try {
     await page.screenshot({ path: join(outDir, c.file) });
     const stats = await page.evaluate(() => window.__arborStats);
     results[c.file] = stats;
+    // baked textures of the current species (not part of the timed wait)
+    const tex = await page.evaluate(() => window.__arborDebugTextures?.() ?? null);
+    const base = c.file.replace(/\.png$/, '');
+    for (const [key, suffix] of [['leafAlbedo', 'leaf'], ['leafNormal', 'leaf-normal'], ['barkAlbedo', 'bark'], ['barkNormal', 'bark-normal']]) {
+      const url = tex?.[key];
+      if (!url) continue;
+      writeFileSync(join(outDir, `tex-${base}-${suffix}.png`), Buffer.from(url.split(',')[1], 'base64'));
+    }
     console.log(`smoke: ${c.file} ->`, JSON.stringify(stats));
   }
   console.log('smoke: stats', JSON.stringify(results, null, 2));
