@@ -23,8 +23,8 @@
     "sagMax": 0.45,
     "noise": 0.1,
     "maxOrder": 10,
-    "shedThreshold": 0.16,
-    "shedYears": 3,
+    "shedThreshold": 0.08,
+    "shedYears": 4,
     "daVinciExponent": 2.0,
     "tipRadius": 0.0028,
     "deadBranchYears": 8

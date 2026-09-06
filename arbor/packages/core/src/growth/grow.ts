@@ -312,15 +312,22 @@ export class TreeGrowth {
 
     this.profile.allocate += TreeGrowth.now() - t; t = TreeGrowth.now();
 
-    // 4b. the leader keeps pace with the growing envelope: height growth has priority
+    // 4b. the leader keeps pace with the growing envelope, but never runs more than a shoot's length
+    //     ahead of the foliage (a naked whip above the crown is not how a healthy leader looks)
     if (sp.curves) {
       const envTop = envNow.baseHeight + envNow.height;
+      // 95th percentile of live tip heights = where the foliage currently ends
+      const ys: number[] = [];
+      for (let i = 1; i < n; i++) if (this.alive[i] && this.children[i].length === 0 && this.order[i] > 0) ys.push(this.py[i]);
+      ys.sort((a, b) => a - b);
+      const foliageTop = ys.length ? ys[Math.floor(ys.length * 0.95)] : 0;
+      const target = Math.min(envTop, Math.max(foliageTop, 0) + Math.max(1.0, sp.maxShootLength * 1.5));
       for (const b of this.buds) {
         if (!b.alive || b.lateral || b.order !== 0) continue;
         const y = this.py[b.node];
-        if (y < envTop - 0.5 && b.light > 0.05) {
+        if (y < target - 0.3 && b.light > 0.05) {
           const L0 = sp.internodeLength;
-          const need = Math.min(Math.floor(sp.maxShootLength / L0), Math.ceil((envTop - y) / L0));
+          const need = Math.min(Math.floor(sp.maxShootLength / L0), Math.ceil((target - y) / L0));
           if (b.v < need) { b.v = need; if (b.lastCnt === 0) b.lastCnt = -1; }
         }
       }
