@@ -74,7 +74,13 @@
     ],
     "roughness": 0.9,
     "family": "furrowed",
-    "scale": 1.4
+    "scale": 1.4,
+    "twigColor": [
+      0.45,
+      0.38,
+      0.18
+    ],
+    "twigRadius": 0.008
   },
   "lateralShootScale": 1.0,
   "axisKink": 0.1,

@@ -79,7 +79,13 @@
     ],
     "roughness": 0.9,
     "family": "ridged",
-    "scale": 2.0
+    "scale": 2.0,
+    "twigColor": [
+      0.32,
+      0.28,
+      0.2
+    ],
+    "twigRadius": 0.01
   },
   "deadBranchYears": 3
 }

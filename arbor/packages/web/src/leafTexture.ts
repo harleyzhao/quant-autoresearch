@@ -135,13 +135,11 @@ function bakeAlbedo(layout: CardLayout, W: number, H: number): { canvas: HTMLCan
 
   for (const { sil, shade } of layout.parts) {
     ctx.globalCompositeOperation = 'source-over';
-    // petiole (the order-0 vein segment below the lamina)
+    // petiole: the whole order-0 vein in petiole colour; the lamina fill below covers the midrib part
     const midrib = sil.veins.find((v) => v.order === 0);
     if (midrib) {
       ctx.strokeStyle = css(PETIOLE); ctx.lineWidth = midrib.width * 1.15;
-      const ty = midrib.y0 + (midrib.y1 - midrib.y0) * Math.min(1, Math.max(0, (-midrib.y0 + 0.03 * Math.hypot(midrib.x1 - midrib.x0, midrib.y1 - midrib.y0)) / (Math.hypot(midrib.x1 - midrib.x0, midrib.y1 - midrib.y0) || 1)));
-      const tx = midrib.x0 + (midrib.x1 - midrib.x0) * ((ty - midrib.y0) / ((midrib.y1 - midrib.y0) || 1));
-      ctx.beginPath(); ctx.moveTo(midrib.x0, midrib.y0); ctx.lineTo(tx, ty); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(midrib.x0, midrib.y0); ctx.lineTo(midrib.x1, midrib.y1); ctx.stroke();
     }
     // lamina: flat base, soft radial gradient (edges ~8% darker), per-leaf shade
     tracePolygons(ctx, sil);
@@ -321,7 +319,7 @@ function cardLayout(sp: SpeciesParams, k: number): CardLayout {
   parts.push({ sil: placeSilhouette(base, 0.92 + 0.08 * hashStr(sp.id, 3), 0, 0.04), shade: 1 + (hashStr(sp.id, 19) - 0.5) * 0.12 });
   const polygons = parts.flatMap((p) => p.sil.polygons);
   const veins = parts.flatMap((p) => p.sil.veins);
-  const twigWidth = 0.028;
+  const twigWidth = 0.034;
   const bbox = bboxOf(polygons, [-twigWidth, twigY0, twigWidth, twigY0]);
   return { parts, twig: { x0: 0, y0: twigY0, x1: 0, y1: 0, width: twigWidth }, bbox, veins, polygons };
 }

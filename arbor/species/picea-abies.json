@@ -74,7 +74,13 @@
     ],
     "roughness": 0.9,
     "family": "plated",
-    "scale": 2.5
+    "scale": 2.5,
+    "twigColor": [
+      0.36,
+      0.26,
+      0.18
+    ],
+    "twigRadius": 0.01
   },
   "lateralShootScale": 0.45,
   "axisKink": 0.0,

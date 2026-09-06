@@ -73,7 +73,13 @@
     ],
     "roughness": 0.7,
     "family": "lenticel",
-    "scale": 1.2
+    "scale": 1.2,
+    "twigColor": [
+      0.16,
+      0.12,
+      0.1
+    ],
+    "twigRadius": 0.008
   },
   "lateralShootScale": 0.9,
   "axisKink": 0.12,

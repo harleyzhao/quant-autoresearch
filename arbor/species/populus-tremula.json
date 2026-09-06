@@ -73,7 +73,13 @@
     ],
     "roughness": 0.7,
     "family": "smooth",
-    "scale": 1.2
+    "scale": 1.2,
+    "twigColor": [
+      0.3,
+      0.33,
+      0.24
+    ],
+    "twigRadius": 0.01
   },
   "lateralShootScale": 0.7,
   "axisKink": 0.1,

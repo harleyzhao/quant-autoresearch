@@ -75,7 +75,13 @@
     ],
     "roughness": 0.7,
     "family": "exfoliating",
-    "scale": 1.0
+    "scale": 1.0,
+    "twigColor": [
+      0.36,
+      0.32,
+      0.24
+    ],
+    "twigRadius": 0.012
   },
   "lateralShootScale": 0.85,
   "axisKink": 0.15,

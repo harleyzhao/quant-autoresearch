@@ -133,7 +133,7 @@ function generateField(family: BarkFamily, S: number): Field {
       normalStrength = ridged ? 10 : 14;
       const dark: RGB = ridged ? [0.15, 0.13, 0.11] : [0.11, 0.085, 0.065];
       const light: RGB = ridged ? [0.36, 0.33, 0.30] : [0.38, 0.31, 0.24];
-      const stretch = (n: number) => clamp01(0.5 + (n - 0.5) * 2.8); // fbm is concentrated around 0.5
+      const stretch = (n: number) => clamp01(0.5 + (n - 0.5) * 3.4); // fbm is concentrated around 0.5
       const sstep = (a: number, b: number, x: number) => smooth(clamp01((x - a) / (b - a)));
       for (let y = 0, i = 0; y < S; y++) for (let x = 0; x < S; x++, i++) {
         const u = x / S, v = y / S;

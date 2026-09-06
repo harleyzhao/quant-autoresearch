@@ -58,7 +58,7 @@ export function buildBranchMesh(sk: Skeleton, opts: BranchMeshOptions = {}): Bra
   const rMax = sk.radius[0] || 1e-3;
   const segOf = (r: number) => Math.max(minSeg, Math.min(maxSeg, Math.round(minSeg + (maxSeg - minSeg) * Math.sqrt(r / rMax))));
 
-  const pos: number[] = [], nrm: number[] = [], uv: number[] = [], idx: number[] = [];
+  const pos: number[] = [], nrm: number[] = [], uv: number[] = [], idx: number[] = [], rad: number[] = [];
   /** ring start index and segment count per node */
   const ringStart = new Int32Array(n).fill(-1);
   const ringSeg = new Int32Array(n);
@@ -78,6 +78,7 @@ export function buildBranchMesh(sk: Skeleton, opts: BranchMeshOptions = {}): Bra
       pos.push(cx + ox * r, cy + oy * r, cz + oz * r);
       nrm.push(ox, oy, oz);
       uv.push((s / seg) * uSpan, v);
+      rad.push(r);
     }
     return start;
   };
@@ -118,9 +119,9 @@ export function buildBranchMesh(sk: Skeleton, opts: BranchMeshOptions = {}): Bra
       const c = pos.length / 3;
       const tx = tan[i * 3], ty = tan[i * 3 + 1], tz = tan[i * 3 + 2];
       pos.push(P[i * 3] + tx * r, P[i * 3 + 1] + ty * r, P[i * 3 + 2] + tz * r);
-      nrm.push(tx, ty, tz); uv.push(0.5, vlen[i] * uvScale + r);
+      nrm.push(tx, ty, tz); uv.push(0.5, vlen[i] * uvScale + r); rad.push(r);
       for (let s = 0; s < seg; s++) idx.push(ringStart[i] + s, ringStart[i] + s + 1, c);
     }
   }
-  return { position: Float32Array.from(pos), normal: Float32Array.from(nrm), uv: Float32Array.from(uv), index: Uint32Array.from(idx) };
+  return { position: Float32Array.from(pos), normal: Float32Array.from(nrm), uv: Float32Array.from(uv), index: Uint32Array.from(idx), radius: Float32Array.from(rad) };
 }

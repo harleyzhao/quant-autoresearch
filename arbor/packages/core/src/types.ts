@@ -59,6 +59,10 @@ export interface BarkParams {
   family?: BarkFamily;
   /** Texture repeats per meter along the trunk. */
   scale?: number;
+  /** Colour of young twigs (linear RGB); bark texture fades in above `twigRadius`. Defaults to a darker trunk colour. */
+  twigColor?: [number, number, number];
+  /** Radius (m) below which a branch is rendered as twig; the blend completes at 3× this radius. */
+  twigRadius?: number;
 }
 
 export interface SpeciesParams {
@@ -181,6 +185,8 @@ export interface BranchMesh {
   normal: Float32Array;
   uv: Float32Array;
   index: Uint32Array;
+  /** Branch radius (m) at each vertex; lets renderers blend twig and trunk bark. */
+  radius: Float32Array;
 }
 
 /** Per-leaf instance data. Quaternion as xyzw. */

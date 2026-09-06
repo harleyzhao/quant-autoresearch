@@ -307,7 +307,7 @@ function barkMaterial(sp: SpeciesParams): THREE.MeshStandardMaterial {
   const t0 = performance.now();
   const textures = barkTextures(family, BARK_QUICK_SIZE, maxAnisotropy);
   console.log(`bark textures for ${family}@${BARK_QUICK_SIZE} baked in ${(performance.now() - t0).toFixed(0)} ms`);
-  const material = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, normalScale: new THREE.Vector2(1, 1) });
+  const material = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, normalScale: new THREE.Vector2(1, 1), vertexColors: true });
   // species tint relative to a neutral grey, applied partially so the family albedo keeps its character
   const tint = sp.bark.color.map((c) => Math.min(1.5, Math.max(0.5, 1 + (c / 0.4 - 1) * 0.6))) as [number, number, number];
   material.color.setRGB(tint[0], tint[1], tint[2], THREE.LinearSRGBColorSpace);
@@ -371,6 +371,21 @@ function setModel(model: PlantModel, reframe: boolean): void {
   bg.setAttribute('normal', new THREE.BufferAttribute(model.branches.normal, 3));
   bg.setAttribute('uv', new THREE.BufferAttribute(model.branches.uv, 2));
   bg.setIndex(new THREE.BufferAttribute(fixWinding(model.branches), 1));
+  // twig vs trunk: vertex colour multiplies the bark texture; thin branches fade to the species twig colour
+  {
+    const rad = model.branches.radius;
+    const col = new Float32Array(rad.length * 3);
+    const twig = sp.bark.twigColor ?? [sp.bark.color[0] * 0.7, sp.bark.color[1] * 0.7, sp.bark.color[2] * 0.7];
+    const r0 = sp.bark.twigRadius ?? 0.01, r1 = r0 * 3;
+    // relative to the tinted bark albedo: 1 = untouched texture, twig = twigColor / barkColor
+    const rel = [twig[0] / Math.max(0.05, sp.bark.color[0]), twig[1] / Math.max(0.05, sp.bark.color[1]), twig[2] / Math.max(0.05, sp.bark.color[2])];
+    for (let k = 0; k < rad.length; k++) {
+      const t = Math.min(1, Math.max(0, (rad[k] - r0) / (r1 - r0)));
+      const u = t * t * (3 - 2 * t);
+      col[k * 3] = rel[0] + (1 - rel[0]) * u; col[k * 3 + 1] = rel[1] + (1 - rel[1]) * u; col[k * 3 + 2] = rel[2] + (1 - rel[2]) * u;
+    }
+    bg.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  }
   branchMesh = new THREE.Mesh(bg, barkMaterial(sp));
   branchMesh.name = 'branches';
   branchMesh.castShadow = branchMesh.receiveShadow = true;
