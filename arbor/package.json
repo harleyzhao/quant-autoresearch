@@ -11,7 +11,8 @@
     "dev": "pnpm --filter @arbor/web dev",
     "smoke": "pnpm --filter @arbor/web smoke",
     "metrics": "pnpm --filter @arbor/core metrics",
-    "validate": "pnpm --filter @arbor/core validate"
+    "validate": "pnpm --filter @arbor/core validate",
+    "contact-sheet": "pnpm --filter @arbor/web contact-sheet"
   },
   "devDependencies": {
     "typescript": "^5.9.0"
