@@ -68,7 +68,9 @@ export class PlantSession {
     }
     const { skeleton, branches } = this.skeletonCache;
     const phenology = phenologyAt(sp.phenology, dayOfYear, latitude);
-    const leaves = buildLeaves(skeleton, sp, phenology, this.growth.year, this.seed);
+    // a tree frozen by the node budget keeps the foliage of its last growing seasons instead of going bare
+    const foliageYear = Math.min(this.growth.year, this.growth.lastShootYear + 1);
+    const leaves = buildLeaves(skeleton, sp, phenology, foliageYear, this.seed);
     const t2 = now();
     const individual: IndividualParams = { seed: this.seed, ageYears: this.growth.year, dayOfYear, latitude, health: 1 };
     return { species: sp, individual, skeleton, branches, leaves, phenology, stats: { ...skeletonStats(skeleton, sp), leaves: leaves.count, growthMs, meshMs: t2 - t1 } };

@@ -40,11 +40,11 @@ export interface LeafSilhouette {
 }
 
 export const LEAF_FAMILY_DEFAULTS: Record<LeafFamily, LeafShapeParams> = {
-  simple: { family: 'simple', aspect: 0.6, widestAt: 0.4, base: 'rounded', apex: 'acute', serration: { amplitude: 0.05, count: 18 }, lobes: { count: 0, depth: 0, round: 1 }, leaflets: { count: 1, aspect: 0.4 }, petiole: 0.2, needle: { count: 44, length: 0.32, angle: 55 } },
-  lobed: { family: 'lobed', aspect: 0.6, widestAt: 0.6, base: 'cuneate', apex: 'obtuse', serration: { amplitude: 0, count: 0 }, lobes: { count: 4, depth: 0.45, round: 0.9 }, leaflets: { count: 1, aspect: 0.4 }, petiole: 0.1, needle: { count: 44, length: 0.32, angle: 55 } },
-  palmate: { family: 'palmate', aspect: 1.1, widestAt: 0.5, base: 'cordate', apex: 'acute', serration: { amplitude: 0.04, count: 6 }, lobes: { count: 5, depth: 0.5, round: 0.15 }, leaflets: { count: 1, aspect: 0.4 }, petiole: 0.5, needle: { count: 44, length: 0.32, angle: 55 } },
-  pinnate: { family: 'pinnate', aspect: 0.55, widestAt: 0.5, base: 'cuneate', apex: 'acute', serration: { amplitude: 0.03, count: 14 }, lobes: { count: 0, depth: 0, round: 1 }, leaflets: { count: 7, aspect: 0.38 }, petiole: 0.15, needle: { count: 44, length: 0.32, angle: 55 } },
-  needle: { family: 'needle', aspect: 0.014, widestAt: 0.5, base: 'truncate', apex: 'acute', serration: { amplitude: 0, count: 0 }, lobes: { count: 0, depth: 0, round: 1 }, leaflets: { count: 1, aspect: 0.1 }, petiole: 0, needle: { count: 44, length: 0.32, angle: 55 } },
+  simple: { family: 'simple', aspect: 0.6, widestAt: 0.4, base: 'rounded', apex: 'acute', serration: { amplitude: 0.05, count: 18 }, lobes: { count: 0, depth: 0, round: 1 }, leaflets: { count: 1, aspect: 0.4 }, petiole: 0.2, needle: { count: 150, length: 0.32, angle: 55 } },
+  lobed: { family: 'lobed', aspect: 0.6, widestAt: 0.6, base: 'cuneate', apex: 'obtuse', serration: { amplitude: 0, count: 0 }, lobes: { count: 4, depth: 0.45, round: 0.9 }, leaflets: { count: 1, aspect: 0.4 }, petiole: 0.1, needle: { count: 150, length: 0.32, angle: 55 } },
+  palmate: { family: 'palmate', aspect: 1.1, widestAt: 0.5, base: 'cordate', apex: 'acute', serration: { amplitude: 0.04, count: 6 }, lobes: { count: 5, depth: 0.5, round: 0.15 }, leaflets: { count: 1, aspect: 0.4 }, petiole: 0.5, needle: { count: 150, length: 0.32, angle: 55 } },
+  pinnate: { family: 'pinnate', aspect: 0.55, widestAt: 0.5, base: 'cuneate', apex: 'acute', serration: { amplitude: 0.03, count: 14 }, lobes: { count: 0, depth: 0, round: 1 }, leaflets: { count: 7, aspect: 0.38 }, petiole: 0.15, needle: { count: 150, length: 0.32, angle: 55 } },
+  needle: { family: 'needle', aspect: 0.014, widestAt: 0.5, base: 'truncate', apex: 'acute', serration: { amplitude: 0, count: 0 }, lobes: { count: 0, depth: 0, round: 1 }, leaflets: { count: 1, aspect: 0.1 }, petiole: 0, needle: { count: 150, length: 0.32, angle: 55 } },
 };
 
 export function resolveLeafShape(family: LeafFamily, overrides?: Partial<LeafShapeParams>): LeafShapeParams {
@@ -257,14 +257,15 @@ export function leafSilhouette(params: LeafShapeParams, n = 96): LeafSilhouette 
     case 'needle': {
       // a whole needle-bearing shoot: twig along +y, needles alternating left/right in a fan
       const { count, length, angle } = p.needle;
-      const w = Math.max(0.004, p.aspect);
+      const w = Math.max(0.012, p.aspect); // needles are drawn wider than life so the card keeps alpha coverage at distance
+      const h01 = (i: number, salt: number) => { let h = Math.imul(i ^ 0x27d4eb2d, 0x165667b1) ^ Math.imul(salt + 0x9e3779b9, 0x85ebca6b); h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d); h ^= h >>> 13; return (h >>> 0) / 4294967296; };
       veins.push({ x0: 0, y0: 0, x1: 0, y1: 0.97, width: 0.035, order: 0 });
       for (let i = 0; i < count; i++) {
-        const t = 0.03 + (0.85 * i) / Math.max(1, count - 1);
+        const t = 0.03 + (0.85 * i) / Math.max(1, count - 1) + (h01(i, 1) - 0.5) * 0.01;
         const side = i % 2 === 0 ? 1 : -1;
-        const jitter = ((i * 7919) % 97) / 97 - 0.5;
-        const a = ((angle + jitter * 18) * Math.PI) / 180;
-        const len = length * (0.85 + 0.3 * (((i * 104729) % 89) / 89));
+        const jitter = h01(i, 2) - 0.5;
+        const a = ((angle + jitter * 30) * Math.PI) / 180;
+        const len = length * (0.8 + 0.4 * h01(i, 3));
         const dx = side * Math.sin(a), dy = Math.cos(a);
         const nx = -dy * w * 0.5, ny = dx * w * 0.5;
         polygons.push(Float32Array.from([nx, t + ny, -nx, t - ny, dx * len - nx * 0.4, t + dy * len - ny * 0.4, dx * len + nx * 0.4, t + dy * len + ny * 0.4].map((v) => v)));

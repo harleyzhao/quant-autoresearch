@@ -90,6 +90,8 @@ export class TreeGrowth {
   markers: MarkerField;
   shadow: ShadowGrid;
   year = 0;
+  /** last season in which any shoot was produced; foliage is placed relative to it when growth is frozen by the node budget */
+  lastShootYear = 0;
   private juvenileCleared = false;
   /** cumulative ms per phase, for tuning */
   profile = { light: 0, occupancy: 0, perceive: 0, allocate: 0, shoots: 0, shed: 0, secondary: 0, sag: 0 };
@@ -357,6 +359,7 @@ export class TreeGrowth {
       }
       cur = node; pdx = gx; pdy = gy; pdz = gz;
     }
+    this.lastShootYear = this.year;
     // bud continues as the terminal bud of the shoot
     b.node = cur; b.dx = pdx; b.dy = pdy; b.dz = pdz; b.lateral = false; b.age = 0; b.lastCnt = -1;
     this.nodeBuds[cur].push(bi);

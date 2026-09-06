@@ -34,8 +34,8 @@
   },
   "leaf": {
     "shape": "needle",
-    "length": 0.02,
-    "width": 0.0018,
+    "length": 0.025,
+    "width": 0.003,
     "perNode": 1,
     "maxShootAge": 5,
     "maxBranchRadius": 0.008,
@@ -46,15 +46,10 @@
     ],
     "autumnPigment": "none",
     "shapeParams": {
-      "aspect": 0.62,
-      "widestAt": 0.62,
-      "lobes": {
-        "count": 4,
-        "depth": 0.42,
-        "round": 0.95
-      },
-      "base": "cuneate",
-      "apex": "obtuse"
+      "needle": {
+        "count": 240,
+        "angle": 60
+      }
     }
   },
   "phenology": {

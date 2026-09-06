@@ -35,7 +35,7 @@
   "leaf": {
     "shape": "needle",
     "length": 0.06,
-    "width": 0.0025,
+    "width": 0.004,
     "perNode": 1,
     "maxShootAge": 3,
     "maxBranchRadius": 0.009,
@@ -44,7 +44,13 @@
       0.24,
       0.1
     ],
-    "autumnPigment": "none"
+    "autumnPigment": "none",
+    "shapeParams": {
+      "needle": {
+        "count": 160,
+        "angle": 50
+      }
+    }
   },
   "phenology": {
     "budburstGDD": 220,

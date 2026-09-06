@@ -22,7 +22,8 @@ export function buildLeaves(sk: Skeleton, sp: SpeciesParams, ph: PhenologyState,
 
   let leafId = 0;
   for (let i = 1; i < n; i++) {
-    if (sk.radius[i] > lf.maxBranchRadius || sk.dead[i]) continue;
+    // tips always carry their short-shoot foliage, even when secondary growth has thickened an old, frozen tip
+    if (sk.dead[i] || (!sk.isTip[i] && sk.radius[i] > lf.maxBranchRadius)) continue;
     if (!sk.isTip[i] && currentYear - sk.birthYear[i] > lf.maxShootAge) continue;
     const p = sk.parent[i];
     const ax = P[i * 3] - P[p * 3], ay = P[i * 3 + 1] - P[p * 3 + 1], az = P[i * 3 + 2] - P[p * 3 + 2];
