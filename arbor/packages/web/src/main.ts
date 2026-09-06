@@ -147,7 +147,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.maxPolarAngle = Math.PI * 0.495;
 
-scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x5a6b3a, 0.9));
+scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x5a6b3a, 1.2)); // lifts bark shaded by its own crown so textured trunks do not read as black
 const sun = new THREE.DirectionalLight(0xfff2dc, 3.0);
 sun.position.set(18, 30, 12);
 sun.castShadow = true;
@@ -223,9 +223,11 @@ function leafCardGeometry(sp: SpeciesParams, tex: LeafTextures): THREE.BufferGeo
   return g;
 }
 
-/** Geometry + material for a species' leaves; baked once and reused across models. */
-function leafAssets(sp: SpeciesParams): LeafAssets {
-  const hit = leafAssetCache.get(sp.id);
+/** Geometry + material for a species' leaf cards (k leaves per instance); baked once and reused across models. */
+function leafAssets(sp: SpeciesParams, leavesPerInstance: number): LeafAssets {
+  const k = sp.leaf.shape === 'needle' ? 1 : Math.max(1, Math.round(leavesPerInstance || 1));
+  const key = `${sp.id}:${k}`;
+  const hit = leafAssetCache.get(key);
   if (hit) return hit;
   let out: LeafAssets;
   if (sp.leaf.shape === 'needle') {
@@ -234,7 +236,7 @@ function leafAssets(sp: SpeciesParams): LeafAssets {
     out = { geometry, material, textures: null };
   } else {
     const t0 = performance.now();
-    const textures = leafTextures(sp);
+    const textures = leafTextures(sp, k);
     const geometry = leafCardGeometry(sp, textures);
     const material = new THREE.MeshStandardMaterial({
       map: textures.map, normalMap: textures.normalMap, normalScale: new THREE.Vector2(0.6, 0.6),
@@ -242,10 +244,10 @@ function leafAssets(sp: SpeciesParams): LeafAssets {
     });
     material.color.setRGB(1.2, 1.2, 1.2, THREE.LinearSRGBColorSpace); // compensate the 0.8 lamina base so the instance colour is the hue
     // alpha-tested shadows: WebGLShadowMap copies map + alphaTest into its depth material, so no customDepthMaterial is needed
-    console.log(`leaf textures for ${sp.id} baked in ${(performance.now() - t0).toFixed(0)} ms`);
+    console.log(`leaf textures for ${key} baked in ${(performance.now() - t0).toFixed(0)} ms`);
     out = { geometry, material, textures };
   }
-  leafAssetCache.set(sp.id, out);
+  leafAssetCache.set(key, out);
   return out;
 }
 
@@ -329,6 +331,29 @@ function barkMaterial(sp: SpeciesParams): THREE.MeshStandardMaterial {
   return material;
 }
 
+/**
+ * The branch mesh's vertex normals point outward, but its triangle winding can disagree with them
+ * (the core mesher currently emits clockwise rings), in which case front-face culling shows the
+ * inner far wall and the sun never lights the bark. Sample a few faces and flip the winding when
+ * the face normals oppose the vertex normals. Mutates the (main-thread copy of the) index in place.
+ */
+function fixWinding(b: PlantModel['branches']): Uint32Array {
+  const { position: P, normal: N, index: I } = b;
+  const tris = I.length / 3;
+  let agree = 0, disagree = 0;
+  const step = Math.max(1, Math.floor(tris / 64));
+  for (let t = 0; t < tris; t += step) {
+    const a = I[t * 3] * 3, c = I[t * 3 + 1] * 3, d = I[t * 3 + 2] * 3;
+    const ux = P[c] - P[a], uy = P[c + 1] - P[a + 1], uz = P[c + 2] - P[a + 2];
+    const vx = P[d] - P[a], vy = P[d + 1] - P[a + 1], vz = P[d + 2] - P[a + 2];
+    const fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx;
+    const dot = fx * (N[a] + N[c] + N[d]) + fy * (N[a + 1] + N[c + 1] + N[d + 1]) + fz * (N[a + 2] + N[c + 2] + N[d + 2]);
+    if (dot > 0) agree++; else if (dot < 0) disagree++;
+  }
+  if (disagree > agree) for (let t = 0; t < tris; t++) { const tmp = I[t * 3 + 1]; I[t * 3 + 1] = I[t * 3 + 2]; I[t * 3 + 2] = tmp; }
+  return I;
+}
+
 function disposeTree(): void {
   for (const m of [branchMesh, leafMesh]) if (m) treeGroup.remove(m);
   branchMesh?.geometry.dispose(); // per-model; leaf geometry and all materials/textures are cached per species
@@ -345,14 +370,14 @@ function setModel(model: PlantModel, reframe: boolean): void {
   bg.setAttribute('position', new THREE.BufferAttribute(model.branches.position, 3));
   bg.setAttribute('normal', new THREE.BufferAttribute(model.branches.normal, 3));
   bg.setAttribute('uv', new THREE.BufferAttribute(model.branches.uv, 2));
-  bg.setIndex(new THREE.BufferAttribute(model.branches.index, 1));
+  bg.setIndex(new THREE.BufferAttribute(fixWinding(model.branches), 1));
   branchMesh = new THREE.Mesh(bg, barkMaterial(sp));
   branchMesh.name = 'branches';
   branchMesh.castShadow = branchMesh.receiveShadow = true;
   treeGroup.add(branchMesh);
 
   const lv = model.leaves;
-  const la = leafAssets(sp);
+  const la = leafAssets(sp, lv.leavesPerInstance ?? 1);
   leafMesh = new THREE.InstancedMesh(la.geometry, la.material, Math.max(1, lv.count));
   leafMesh.name = 'leaves';
   leafMesh.castShadow = true;
@@ -537,7 +562,7 @@ function screenshot(): void {
 
 window.__arborDebugTextures = () => {
   const sp = currentModel?.species;
-  const leaf = sp ? leafAssetCache.get(sp.id)?.textures?.debugCanvases : undefined;
+  const leaf = sp && currentModel ? leafAssetCache.get(`${sp.id}:${sp.leaf.shape === 'needle' ? 1 : Math.max(1, Math.round(currentModel.leaves.leavesPerInstance || 1))}`)?.textures?.debugCanvases : undefined;
   const bark = sp ? barkMaterialCache.get(sp.id)?.textures.debugCanvases : undefined;
   return {
     leafAlbedo: leaf?.albedo.toDataURL('image/png') ?? null, leafNormal: leaf?.normal.toDataURL('image/png') ?? null,

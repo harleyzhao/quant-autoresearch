@@ -7,7 +7,7 @@
  * `unitToUv` maps unit coordinates to uv so the card geometry can use matching uvs.
  */
 import * as THREE from 'three';
-import { leafFamilyOf, leafSilhouette, resolveLeafShape, type LeafSilhouette, type SpeciesParams } from '@arbor/core';
+import { leafFamilyOf, leafSilhouette, resolveLeafShape, type LeafSilhouette, type SpeciesParams, type Vein } from '@arbor/core';
 
 export interface LeafTextures {
   map: THREE.Texture;
@@ -31,7 +31,9 @@ const MARGIN_BAND: [number, number, number] = [0.70, 0.74, 0.68];
 
 const cache = new Map<string, LeafTextures>();
 
-const css = (c: [number, number, number], a = 1) => `rgba(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)},${a})`;
+/** Linear reflectance -> 8-bit sRGB (the texture is tagged SRGBColorSpace; the tints above are linear factors). */
+const srgb8 = (c: number) => Math.round(255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(Math.min(1, c), 1 / 2.4) - 0.055));
+const css = (c: [number, number, number], a = 1) => `rgba(${srgb8(c[0])},${srgb8(c[1])},${srgb8(c[2])},${a})`;
 
 /** Deterministic per-pixel hash noise in [0,1). */
 function hash2(x: number, y: number): number {
@@ -83,6 +85,20 @@ function flipRows(src: Uint8ClampedArray, W: number, H: number): Uint8Array {
   return out;
 }
 
+/** Opaque maps go through a canvas (drawable by GLTFExporter, which re-encodes normal maps on export). */
+function canvasTexture(canvas: HTMLCanvasElement): THREE.CanvasTexture {
+  const t = new THREE.CanvasTexture(canvas);
+  t.colorSpace = THREE.NoColorSpace;
+  t.generateMipmaps = true;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  t.anisotropy = 4;
+  t.needsUpdate = true;
+  return t;
+}
+
+/** The albedo stays a DataTexture: a canvas would premultiply and drop the RGB under alpha 0 (dark fringes). */
 function dataTexture(data: Uint8Array, W: number, H: number, srgb: boolean): THREE.DataTexture {
   const t = new THREE.DataTexture(data, W, H, THREE.RGBAFormat, THREE.UnsignedByteType);
   t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -97,47 +113,61 @@ function dataTexture(data: Uint8Array, W: number, H: number, srgb: boolean): THR
   return t;
 }
 
-function bakeAlbedo(sil: LeafSilhouette, W: number, H: number): { canvas: HTMLCanvasElement; data: Uint8Array } {
+/** One leaf of a card: its silhouette (already placed in the card's unit frame) and a lamina shade factor. */
+interface LeafPart { sil: LeafSilhouette; shade: number }
+/** What gets baked: the parts (drawn in order, later ones on top), an optional twig segment and the union bbox. */
+interface CardLayout { parts: LeafPart[]; twig: { x0: number; y0: number; x1: number; y1: number; width: number } | null; bbox: LeafSilhouette['bbox']; veins: Vein[]; polygons: Float32Array[] }
+
+function bakeAlbedo(layout: CardLayout, W: number, H: number): { canvas: HTMLCanvasElement; data: Uint8Array } {
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  const f = makeFrame(sil.bbox, W, H);
+  const f = makeFrame(layout.bbox, W, H);
   ctx.clearRect(0, 0, W, H);
   applyFrame(ctx, f);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-  // petiole (below the lamina, drawn as the order-0 vein segment with y < 0)
-  const midrib = sil.veins.find((v) => v.order === 0);
-  if (midrib) {
-    ctx.strokeStyle = css(PETIOLE); ctx.lineCap = 'round'; ctx.lineWidth = midrib.width * 1.15;
-    ctx.beginPath(); ctx.moveTo(midrib.x0, midrib.y0); ctx.lineTo(midrib.x1, Math.min(midrib.y1, 0.03)); ctx.stroke();
+  if (layout.twig) {
+    const t = layout.twig;
+    ctx.strokeStyle = css([PETIOLE[0] * 0.8, PETIOLE[1] * 0.75, PETIOLE[2] * 0.7]); ctx.lineWidth = t.width;
+    ctx.beginPath(); ctx.moveTo(t.x0, t.y0); ctx.lineTo(t.x1, t.y1); ctx.stroke();
   }
 
-  // lamina: flat base, soft radial gradient (edges ~8% darker)
-  tracePolygons(ctx, sil);
-  const cx = (sil.bbox.minX + sil.bbox.maxX) / 2, cy = (Math.max(0, sil.bbox.minY) + sil.bbox.maxY) / 2;
-  const rad = Math.max(sil.bbox.maxX - sil.bbox.minX, sil.bbox.maxY - Math.max(0, sil.bbox.minY)) * 0.6;
-  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
-  grad.addColorStop(0, css(LAMINA));
-  grad.addColorStop(1, css([LAMINA[0] * 0.92, LAMINA[1] * 0.92, LAMINA[2] * 0.92]));
-  ctx.fillStyle = grad;
-  ctx.fill('nonzero');
-
-  // everything below only paints where the lamina already is
-  ctx.globalCompositeOperation = 'source-atop';
-  // margin band: stroke straddles the outline; only the inner half survives source-atop
-  tracePolygons(ctx, sil);
-  ctx.strokeStyle = css(MARGIN_BAND); ctx.lineWidth = 0.03; ctx.lineJoin = 'round'; ctx.stroke();
-  // veins, widest first so finer orders sit on top
-  strokeVeins(ctx, sil, 1.0, 0, css(VEIN));
-  strokeVeins(ctx, sil, 1.0, 1, css(VEIN, 0.9));
-  strokeVeins(ctx, sil, 1.0, 2, css(VEIN, 0.7));
+  for (const { sil, shade } of layout.parts) {
+    ctx.globalCompositeOperation = 'source-over';
+    // petiole (the order-0 vein segment below the lamina)
+    const midrib = sil.veins.find((v) => v.order === 0);
+    if (midrib) {
+      ctx.strokeStyle = css(PETIOLE); ctx.lineWidth = midrib.width * 1.15;
+      const ty = midrib.y0 + (midrib.y1 - midrib.y0) * Math.min(1, Math.max(0, (-midrib.y0 + 0.03 * Math.hypot(midrib.x1 - midrib.x0, midrib.y1 - midrib.y0)) / (Math.hypot(midrib.x1 - midrib.x0, midrib.y1 - midrib.y0) || 1)));
+      const tx = midrib.x0 + (midrib.x1 - midrib.x0) * ((ty - midrib.y0) / ((midrib.y1 - midrib.y0) || 1));
+      ctx.beginPath(); ctx.moveTo(midrib.x0, midrib.y0); ctx.lineTo(tx, ty); ctx.stroke();
+    }
+    // lamina: flat base, soft radial gradient (edges ~8% darker), per-leaf shade
+    tracePolygons(ctx, sil);
+    const cx = (sil.bbox.minX + sil.bbox.maxX) / 2, cy = (sil.bbox.minY + sil.bbox.maxY) / 2;
+    const rad = Math.max(sil.bbox.maxX - sil.bbox.minX, sil.bbox.maxY - sil.bbox.minY) * 0.6;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+    const lam: [number, number, number] = [LAMINA[0] * shade, LAMINA[1] * shade, LAMINA[2] * shade];
+    grad.addColorStop(0, css(lam));
+    grad.addColorStop(1, css([lam[0] * 0.92, lam[1] * 0.92, lam[2] * 0.92]));
+    ctx.fillStyle = grad;
+    ctx.fill('nonzero');
+    // margin band and veins only paint where lamina already is (this leaf or the ones below it)
+    ctx.globalCompositeOperation = 'source-atop';
+    tracePolygons(ctx, sil);
+    ctx.strokeStyle = css(MARGIN_BAND); ctx.lineWidth = 0.03; ctx.stroke();
+    strokeVeins(ctx, sil, 1.0, 0, css(VEIN));
+    strokeVeins(ctx, sil, 1.0, 1, css(VEIN, 0.9));
+    strokeVeins(ctx, sil, 1.0, 2, css(VEIN, 0.7));
+  }
   ctx.globalCompositeOperation = 'source-over';
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
   // per-pixel noise (±3%) and colour dilation into transparent texels (avoids dark fringes at alpha-tested edges)
   const img = ctx.getImageData(0, 0, W, H);
   const d = img.data;
-  const lr = Math.round(LAMINA[0] * 255 * 0.96), lg = Math.round(LAMINA[1] * 255 * 0.96), lb = Math.round(LAMINA[2] * 255 * 0.96);
+  const lr = srgb8(LAMINA[0] * 0.92), lg = srgb8(LAMINA[1] * 0.92), lb = srgb8(LAMINA[2] * 0.92);
   for (let y = 0, i = 0; y < H; y++) {
     for (let x = 0; x < W; x++, i += 4) {
       if (d[i + 3] === 0) { d[i] = lr; d[i + 1] = lg; d[i + 2] = lb; continue; }
@@ -150,7 +180,8 @@ function bakeAlbedo(sil: LeafSilhouette, W: number, H: number): { canvas: HTMLCa
   return { canvas, data };
 }
 
-function bakeNormalAndTranslucency(sil: LeafSilhouette, S: number): { normal: HTMLCanvasElement; translucency: HTMLCanvasElement; normalData: Uint8Array; translucencyData: Uint8Array } {
+function bakeNormalAndTranslucency(layout: CardLayout, S: number): { normal: HTMLCanvasElement; translucency: HTMLCanvasElement } {
+  const sil: LeafSilhouette = { polygons: layout.polygons, veins: layout.veins, bbox: layout.bbox };
   const f = makeFrame(sil.bbox, S, S);
   // vein layer: rasterise veins in white per order, weighted by the raise per order
   const veinCanvas = document.createElement('canvas');
@@ -235,7 +266,64 @@ function bakeNormalAndTranslucency(sil: LeafSilhouette, S: number): { normal: HT
     cx.putImageData(img, 0, 0);
     return c;
   };
-  return { normal: toCanvas(normalData), translucency: toCanvas(translucencyData), normalData, translucencyData };
+  // canvases are top-row-first (CanvasTexture flipY = true), matching the DataTexture's bottom-row-first data
+  return { normal: toCanvas(normalData), translucency: toCanvas(translucencyData) };
+}
+
+/** Rigid transform of a silhouette: scale, rotate about the petiole junction, then shift along the leaf's own axis. */
+function placeSilhouette(sil: LeafSilhouette, scale: number, angle: number, shift: number): LeafSilhouette {
+  const c = Math.cos(angle), sn = Math.sin(angle);
+  const tx = -sn * shift, ty = c * shift; // +y of the leaf frame after rotation
+  const map = (x: number, y: number): [number, number] => [c * x * scale - sn * y * scale + tx, sn * x * scale + c * y * scale + ty];
+  const polygons = sil.polygons.map((poly) => {
+    const out = new Float32Array(poly.length);
+    for (let i = 0; i < poly.length; i += 2) { const [x, y] = map(poly[i], poly[i + 1]); out[i] = x; out[i + 1] = y; }
+    return out;
+  });
+  const veins = sil.veins.map((v) => { const [x0, y0] = map(v.x0, v.y0); const [x1, y1] = map(v.x1, v.y1); return { x0, y0, x1, y1, width: v.width * scale, order: v.order }; });
+  return { polygons, veins, bbox: bboxOf(polygons, [tx, ty]) };
+}
+
+function bboxOf(polygons: Float32Array[], extra: number[] = []): LeafSilhouette['bbox'] {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const add = (x: number, y: number) => { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; };
+  for (const poly of polygons) for (let i = 0; i < poly.length; i += 2) add(poly[i], poly[i + 1]);
+  for (let i = 0; i + 1 < extra.length; i += 2) add(extra[i], extra[i + 1]);
+  return { minX, minY, maxX, maxY };
+}
+
+function hashStr(s: string, salt: number): number {
+  let h = 2166136261 ^ salt;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+}
+
+/**
+ * Card layout: a single leaf (k = 1) or a spray of k leaves fanned around a short twig ending at the
+ * petiole junction: leaf 0 along +y, the others rotated ±(35°..55°) and shifted 0.15..0.35 along their axis.
+ */
+function cardLayout(sp: SpeciesParams, k: number): CardLayout {
+  const base = speciesSilhouette(sp);
+  if (k <= 1) {
+    const bbox = { ...base.bbox, minY: Math.min(base.bbox.minY, base.bbox.minY) };
+    return { parts: [{ sil: base, shade: 1 }], twig: null, bbox, veins: base.veins, polygons: base.polygons };
+  }
+  const parts: LeafPart[] = [];
+  const twigY0 = -0.35;
+  for (let i = 1; i < k; i++) {
+    const side = i % 2 === 1 ? 1 : -1;
+    const h = hashStr(sp.id, i * 7);
+    const angle = side * ((35 + 20 * h) * Math.PI / 180) * (1 + 0.6 * Math.floor((i - 1) / 2));
+    const shift = 0.15 + 0.2 * hashStr(sp.id, i * 11);
+    const scale = 0.85 + 0.15 * hashStr(sp.id, i * 13);
+    parts.push({ sil: placeSilhouette(base, scale, angle, shift), shade: 1 + (hashStr(sp.id, i * 17) - 0.5) * 0.12 });
+  }
+  parts.push({ sil: placeSilhouette(base, 0.92 + 0.08 * hashStr(sp.id, 3), 0, 0.04), shade: 1 + (hashStr(sp.id, 19) - 0.5) * 0.12 });
+  const polygons = parts.flatMap((p) => p.sil.polygons);
+  const veins = parts.flatMap((p) => p.sil.veins);
+  const twigWidth = 0.028;
+  const bbox = bboxOf(polygons, [-twigWidth, twigY0, twigWidth, twigY0]);
+  return { parts, twig: { x0: 0, y0: twigY0, x1: 0, y1: 0, width: twigWidth }, bbox, veins, polygons };
 }
 
 /** Silhouette for a species (family from `leaf.shape`, tuned by `leaf.shapeParams`). */
@@ -244,22 +332,26 @@ export function speciesSilhouette(sp: SpeciesParams): LeafSilhouette {
   return leafSilhouette(resolveLeafShape(fam.family, { ...fam.overrides, ...(sp.leaf.shapeParams ?? {}) }), 96);
 }
 
-export function leafTextures(sp: SpeciesParams): LeafTextures {
-  const hit = cache.get(sp.id);
+/** Bake (or fetch) the textures for a species' leaf card holding `leavesPerInstance` leaves. */
+export function leafTextures(sp: SpeciesParams, leavesPerInstance = 1): LeafTextures {
+  const k = Math.max(1, Math.round(leavesPerInstance));
+  const key = `${sp.id}:${k}`;
+  const hit = cache.get(key);
   if (hit) return hit;
-  const sil = speciesSilhouette(sp);
-  const albedo = bakeAlbedo(sil, ALBEDO_SIZE, ALBEDO_SIZE);
-  const nt = bakeNormalAndTranslucency(sil, NORMAL_SIZE);
+  const layout = cardLayout(sp, k);
+  const sil: LeafSilhouette = { polygons: layout.polygons, veins: layout.veins, bbox: layout.bbox };
+  const albedo = bakeAlbedo(layout, ALBEDO_SIZE, ALBEDO_SIZE);
+  const nt = bakeNormalAndTranslucency(layout, NORMAL_SIZE);
   const frame = makeFrame(sil.bbox, ALBEDO_SIZE, ALBEDO_SIZE);
   const map = dataTexture(albedo.data, ALBEDO_SIZE, ALBEDO_SIZE, true);
-  const normalMap = dataTexture(nt.normalData, NORMAL_SIZE, NORMAL_SIZE, false);
-  const translucency = dataTexture(nt.translucencyData, NORMAL_SIZE, NORMAL_SIZE, false);
-  map.name = `leaf-${sp.id}-albedo`; normalMap.name = `leaf-${sp.id}-normal`; translucency.name = `leaf-${sp.id}-translucency`;
+  const normalMap = canvasTexture(nt.normal);
+  const translucency = canvasTexture(nt.translucency);
+  map.name = `leaf-${key}-albedo`; normalMap.name = `leaf-${key}-normal`; translucency.name = `leaf-${key}-translucency`;
   const out: LeafTextures = {
     map, normalMap, translucency, bbox: sil.bbox, silhouette: sil,
     unitToUv: (x, y) => [(frame.ox + x * frame.scale) / frame.W, (frame.oy + y * frame.scale) / frame.H],
     debugCanvases: { albedo: albedo.canvas, normal: nt.normal, translucency: nt.translucency },
   };
-  cache.set(sp.id, out);
+  cache.set(key, out);
   return out;
 }

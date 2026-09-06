@@ -30,6 +30,8 @@ function hash(i: number, j: number, seed: number): number {
 const smooth = (t: number) => t * t * (3 - 2 * t);
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
+/** Linear reflectance -> 8-bit sRGB (family albedos are authored in linear, like species bark.color). */
+const srgb8 = (c: number) => Math.round(255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055));
 
 /** Value noise on a lattice with integer periods px, py (x, y in lattice units). */
 function valueNoise(x: number, y: number, px: number, py: number, seed: number): number {
@@ -126,31 +128,38 @@ function generateField(family: BarkFamily, S: number): Field {
     case 'furrowed':
     case 'ridged': {
       const ridged = family === 'ridged';
-      const fx = ridged ? 10 : 6, power = ridged ? 1.3 : 1.8, depth = ridged ? 0.55 : 0.85;
-      normalStrength = ridged ? 7 : 9;
-      const dark: RGB = ridged ? [0.20, 0.18, 0.16] : [0.20, 0.16, 0.13];
-      const light: RGB = ridged ? [0.36, 0.33, 0.30] : [0.45, 0.38, 0.31];
+      // strongly anisotropic fbm: many periods across, ~1 along -> long vertical creases
+      const fx = ridged ? 20 : 14, fy = ridged ? 2 : 1, power = 2.2, depth = ridged ? 0.55 : 0.9;
+      normalStrength = ridged ? 10 : 14;
+      const dark: RGB = ridged ? [0.15, 0.13, 0.11] : [0.11, 0.085, 0.065];
+      const light: RGB = ridged ? [0.36, 0.33, 0.30] : [0.38, 0.31, 0.24];
+      const stretch = (n: number) => clamp01(0.5 + (n - 0.5) * 2.8); // fbm is concentrated around 0.5
+      const sstep = (a: number, b: number, x: number) => smooth(clamp01((x - a) / (b - a)));
       for (let y = 0, i = 0; y < S; y++) for (let x = 0; x < S; x++, i++) {
         const u = x / S, v = y / S;
-        // vertical ridges: high frequency across, low along; a coarse modulation breaks them into a network
-        const warp = (fbm(u, v, 2, 2, 3, 5) - 0.5) * 0.06;
-        const n = fbm(u + warp, v, fx, 1, 5, 7, 0.55);
-        let ridge = Math.pow(1 - Math.abs(2 * n - 1), power);
-        const coarse = fbm(u, v, 2, 1, 3, 13);
-        const fine = fbm(u, v, 32, 8, 3, 17);
-        ridge = ridge * (0.55 + 0.45 * coarse) + (fine - 0.5) * 0.08;
-        const h = clamp01(1 - depth + depth * ridge + (ridged ? 0.1 : 0));
+        // low-frequency vertical wander: ridges drift sideways, merge and split
+        const wander = (fbm(u, v, 2, 1, 3, 5) - 0.5) * 0.09 + (fbm(u, v, 4, 2, 2, 29) - 0.5) * 0.025;
+        const n1 = stretch(fbm(u + wander, v, fx, fy, 3, 7, 0.5));
+        const crease = Math.pow(1 - Math.abs(2 * n1 - 1), power); // narrow line where the noise crosses 0.5
+        // secondary shallower creases at double frequency, offset so they fall between the main ones
+        const n2 = stretch(fbm(u - wander * 0.6 + 0.021, v + 0.5, fx * 2, fy * 2, 3, 23, 0.5));
+        const crease2 = Math.pow(1 - Math.abs(2 * n2 - 1), power * 1.4);
+        const furrow = clamp01(Math.max(crease, 0.45 * crease2));
+        // broad, flat ridge tops with fine vertical grain; furrows cut down hard
+        const grain = fbm(u, v, 64, 6, 3, 17, 0.6);
+        const top = 0.9 + (fbm(u, v, 3, 2, 3, 13) - 0.5) * 0.12 + (grain - 0.5) * (ridged ? 0.12 : 0.18);
+        const h = clamp01(top * (1 - depth * furrow));
         height[i] = h;
-        const t = clamp01((h - (1 - depth)) / depth);
-        const shade = 0.85 + 0.3 * t;
-        setA(i, [mix(dark[0], light[0], t) * shade * (0.92 + 0.16 * fine), mix(dark[1], light[1], t) * shade * (0.92 + 0.16 * fine), mix(dark[2], light[2], t) * shade * (0.92 + 0.16 * fine)]);
+        const t = sstep(0.42, 0.62, h); // hard-ish furrow -> ridge transition
+        const shade = (0.85 + 0.25 * t) * (0.86 + 0.28 * grain);
+        setA(i, [mix(dark[0], light[0], t) * shade, mix(dark[1], light[1], t) * shade, mix(dark[2], light[2], t) * shade]);
         rough[i] = 0.95 - 0.25 * h;
       }
       break;
     }
     case 'plated': {
       normalStrength = 9;
-      const plate: RGB = [0.55, 0.32, 0.17], crackC: RGB = [0.18, 0.12, 0.08];
+      const plate: RGB = [0.52, 0.33, 0.20], crackC: RGB = [0.18, 0.12, 0.08];
       const nx = 5, ny = 4; // plates taller than wide
       for (let y = 0, i = 0; y < S; y++) for (let x = 0; x < S; x++, i++) {
         const u = x / S, v = y / S;
@@ -255,8 +264,8 @@ export function barkTextures(family: BarkFamily, size = 1024, anisotropy = 4): B
   const strength = normalStrength * (S / 1024);
   const albedoCanvas = canvasOf(S, (d) => {
     for (let i = 0; i < S * S; i++) {
-      const ao = 0.7 + 0.3 * height[i];
-      d[i * 4] = clamp01(albedo[i * 3] * ao) * 255; d[i * 4 + 1] = clamp01(albedo[i * 3 + 1] * ao) * 255; d[i * 4 + 2] = clamp01(albedo[i * 3 + 2] * ao) * 255; d[i * 4 + 3] = 255;
+      const ao = 0.72 + 0.28 * height[i];
+      d[i * 4] = srgb8(clamp01(albedo[i * 3] * ao)); d[i * 4 + 1] = srgb8(clamp01(albedo[i * 3 + 1] * ao)); d[i * 4 + 2] = srgb8(clamp01(albedo[i * 3 + 2] * ao)); d[i * 4 + 3] = 255;
     }
   });
   const normalCanvas = canvasOf(S, (d) => {

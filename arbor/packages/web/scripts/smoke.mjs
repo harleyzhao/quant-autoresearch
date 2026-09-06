@@ -79,6 +79,9 @@ try {
     browser = await chromium.launch({ ...launchOpts, executablePath });
   }
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  // software GL renders a textured 90k-leaf canopy at a few seconds per frame; navigation and screenshots wait on frames
+  page.setDefaultTimeout(PAGE_TIMEOUT_MS);
+  page.setDefaultNavigationTimeout(PAGE_TIMEOUT_MS);
   const errors = [];
   page.on('console', (msg) => {
     const text = msg.text();
@@ -97,7 +100,7 @@ try {
     await page.waitForFunction(() => window.__arborReady === true, null, { timeout: PAGE_TIMEOUT_MS });
     // one extra frame so the canvas holds the latest render before capture
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-    await page.screenshot({ path: join(outDir, c.file) });
+    await page.screenshot({ path: join(outDir, c.file), timeout: PAGE_TIMEOUT_MS }); // software GL renders a textured canopy slowly
     const stats = await page.evaluate(() => window.__arborStats);
     results[c.file] = stats;
     // baked textures of the current species (not part of the timed wait)
