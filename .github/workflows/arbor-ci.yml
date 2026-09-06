@@ -1,0 +1,37 @@
+name: arbor-ci
+
+on:
+  push:
+    paths: ['arbor/**', '.github/workflows/arbor-ci.yml']
+  pull_request:
+    paths: ['arbor/**', '.github/workflows/arbor-ci.yml']
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: arbor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: arbor/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Install Chromium for the smoke render
+        run: pnpm --filter @arbor/web exec playwright-core install chromium --with-deps || npx --yes playwright@1 install chromium --with-deps
+      - run: pnpm smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-renders
+          path: arbor/packages/web/smoke-out/*.png
+          if-no-files-found: ignore

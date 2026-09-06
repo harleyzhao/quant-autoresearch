@@ -1,0 +1,66 @@
+{
+  "id": "pinus-sylvestris",
+  "name": "Scots Pine",
+  "latinName": "Pinus sylvestris",
+  "habit": "conifer",
+  "apicalControl": 0.78,
+  "resourceScale": 2.6,
+  "internodeLength": 0.32,
+  "maxShootLength": 0.9,
+  "perceptionAngle": 50,
+  "perceptionDistance": 5,
+  "occupancyRadius": 1.0,
+  "branchingAngle": 72,
+  "phyllotaxis": 137.5,
+  "branchingMode": "whorled",
+  "whorlCount": 5,
+  "lateralBudProbability": 0.85,
+  "budLifespan": 2,
+  "directionInertia": 1.2,
+  "phototropism": 0.6,
+  "gravitropism": 0.15,
+  "noise": 0.18,
+  "maxOrder": 10,
+  "shedThreshold": 0.18,
+  "shedYears": 2,
+  "daVinciExponent": 2.0,
+  "tipRadius": 0.003,
+  "radialGrowthPerYear": 0.0018,
+  "crown": {
+    "shape": "cone",
+    "height": 16,
+    "width": 8,
+    "baseHeight": 1.0
+  },
+  "leaf": {
+    "shape": "needle",
+    "length": 0.05,
+    "width": 0.012,
+    "perNode": 6,
+    "maxShootAge": 3,
+    "maxBranchRadius": 0.009,
+    "color": [
+      0.09,
+      0.24,
+      0.1
+    ],
+    "autumnPigment": "none"
+  },
+  "phenology": {
+    "budburstGDD": 220,
+    "leafExpandDays": 40,
+    "senescenceDay": 300,
+    "senescenceDays": 40,
+    "abscissionDay": 400,
+    "abscissionDays": 30,
+    "evergreen": true
+  },
+  "bark": {
+    "color": [
+      0.45,
+      0.28,
+      0.16
+    ],
+    "roughness": 0.9
+  }
+}

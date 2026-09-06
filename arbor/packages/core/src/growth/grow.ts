@@ -1,0 +1,400 @@
+import type { SpeciesParams, Skeleton } from '../types.js';
+import { Rng } from '../rng.js';
+import { MarkerField, generateMarkers, insideEnvelope } from './markers.js';
+import { ShadowGrid } from './shadow.js';
+
+/**
+ * Self-organizing tree growth (Pałubicki, Horel, Longay, Runions, Lane, Měch, Prusinkiewicz 2009),
+ * space-colonization flavour with shadow propagation, Borchert–Honda resource allocation and
+ * pipe-model secondary growth. One call to `step()` = one growing season.
+ *
+ * Everything here is deterministic given (species, seed).
+ */
+
+interface Bud {
+  node: number;
+  dx: number; dy: number; dz: number;
+  order: number;
+  /** true until the bud has produced its first metamer (it then becomes the terminal bud of a new branch). */
+  lateral: boolean;
+  /** years spent dormant */
+  age: number;
+  /** phyllotactic phase accumulated along the shoot this bud extends */
+  phase: number;
+  alive: boolean;
+  // per-year scratch
+  q: number; v: number;
+  /** light-only quality (no space term); drives shedding */
+  light: number;
+  ox: number; oy: number; oz: number;
+}
+
+export interface GrowthOptions {
+  maxNodes?: number;
+  /** Marker spacing in internode lengths (smaller = denser space, more metamers). */
+  markerSpacing?: number;
+  /** Shadow propagation: per-node shadow a, decay base b, pyramid depth (voxels). */
+  shadowA?: number;
+  shadowB?: number;
+  shadowDepth?: number;
+  /** Pyramid half-width growth per voxel of depth (1 = 45°). */
+  shadowSpread?: number;
+  /** Recompute marker occupancy from scratch every N years (frees space left by shed branches). */
+  occupancyRefresh?: number;
+}
+
+const DEG = Math.PI / 180;
+
+export class TreeGrowth {
+  readonly sp: SpeciesParams;
+  readonly rng: Rng;
+  private opts: Required<GrowthOptions>;
+
+  // node storage (growable)
+  parent: number[] = [];
+  px: number[] = []; py: number[] = []; pz: number[] = [];
+  dx: number[] = []; dy: number[] = []; dz: number[] = [];
+  birthYear: number[] = [];
+  order: number[] = [];
+  isMain: number[] = [];
+  alive: number[] = [];
+  children: number[][] = [];
+  mainChild: number[] = [];
+  lowLightYears: number[] = [];
+  // per-year derived
+  nodeQ: number[] = [];
+  nodeLight: number[] = [];
+  nodeV: number[] = [];
+  strands: number[] = [];
+  radius: number[] = [];
+
+  buds: Bud[] = [];
+  /** lateral buds sitting on each node (indices into buds) */
+  private nodeBuds: number[][] = [];
+  markers: MarkerField;
+  shadow: ShadowGrid;
+  year = 0;
+  /** cumulative ms per phase, for tuning */
+  profile = { light: 0, occupancy: 0, perceive: 0, allocate: 0, shoots: 0, shed: 0, secondary: 0 };
+  private scratch = new Float32Array(3);
+  private static now(): number { const p = (globalThis as unknown as { performance?: { now(): number } }).performance; return p ? p.now() : Date.now(); }
+
+  constructor(species: SpeciesParams, seed: number, opts: GrowthOptions = {}) {
+    this.sp = species;
+    this.rng = new Rng(seed);
+    this.opts = { maxNodes: opts.maxNodes ?? 60_000, markerSpacing: opts.markerSpacing ?? 0.85, shadowA: opts.shadowA ?? 0.05, shadowB: opts.shadowB ?? 2.0, shadowDepth: opts.shadowDepth ?? 6, shadowSpread: opts.shadowSpread ?? 0.6, occupancyRefresh: opts.occupancyRefresh ?? 4 };
+    const L = species.internodeLength;
+    const pts = generateMarkers(species.crown, L * this.opts.markerSpacing, this.rng.fork(1));
+    this.markers = new MarkerField(pts, L * species.perceptionDistance * 0.5);
+    this.shadow = new ShadowGrid(L * 1.0, this.opts.shadowA, this.opts.shadowB, this.opts.shadowDepth, this.opts.shadowSpread);
+    // root node at ground
+    this.addNode(-1, 0, 0, 0, 0, 1, 0, 0, 1);
+    this.buds.push({ node: 0, dx: 0, dy: 1, dz: 0, order: 0, lateral: false, age: 0, phase: 0, alive: true, q: 0, v: 0, light: 1, ox: 0, oy: 1, oz: 0 });
+    this.nodeBuds[0].push(0);
+  }
+
+  get nodeCount(): number { return this.parent.length; }
+
+  private addNode(parent: number, x: number, y: number, z: number, dx: number, dy: number, dz: number, order: number, isMain: number): number {
+    const i = this.parent.length;
+    this.parent.push(parent);
+    this.px.push(x); this.py.push(y); this.pz.push(z);
+    this.dx.push(dx); this.dy.push(dy); this.dz.push(dz);
+    this.birthYear.push(this.year);
+    this.order.push(order);
+    this.isMain.push(isMain);
+    this.alive.push(1);
+    this.children.push([]);
+    this.mainChild.push(-1);
+    this.lowLightYears.push(0);
+    this.nodeQ.push(0); this.nodeLight.push(0); this.nodeV.push(0); this.strands.push(0); this.radius.push(0);
+    this.nodeBuds.push([]);
+    if (parent >= 0) {
+      this.children[parent].push(i);
+      if (isMain) this.mainChild[parent] = i;
+    }
+    return i;
+  }
+
+  /** Run `years` growing seasons. */
+  grow(years: number): void {
+    for (let y = 0; y < years; y++) this.step();
+  }
+
+  step(): void {
+    const sp = this.sp;
+    const n = this.nodeCount;
+    // 1. light: shade is cast by foliage, i.e. young shoots and shoot tips, not by bare interior wood
+    const foliageAge = sp.leaf.maxShootAge;
+    const pos = new Float32Array(n * 3);
+    let live = 0;
+    for (let i = 0; i < n; i++) {
+      if (!this.alive[i]) continue;
+      if (this.year - this.birthYear[i] > foliageAge && this.mainChild[i] >= 0 && this.alive[this.mainChild[i]]) continue;
+      pos[live * 3] = this.px[i]; pos[live * 3 + 1] = this.py[i]; pos[live * 3 + 2] = this.pz[i]; live++;
+    }
+    let t = TreeGrowth.now();
+    this.shadow.rebuild(pos, live);
+    this.profile.light += TreeGrowth.now() - t; t = TreeGrowth.now();
+
+    // 1b. dynamic occupancy: space is free again where branches were shed
+    const L = sp.internodeLength;
+    if (this.year > 0 && this.year % this.opts.occupancyRefresh === 0) {
+      this.markers.resetOccupancy();
+      const occ = sp.occupancyRadius * L;
+      for (let i = 0; i < n; i++) if (this.alive[i]) this.markers.consume(this.px[i], this.py[i], this.pz[i], occ);
+    }
+
+    this.profile.occupancy += TreeGrowth.now() - t; t = TreeGrowth.now();
+
+    // 2. bud perception
+    const cosA = Math.cos(sp.perceptionAngle * DEG);
+    const dist = sp.perceptionDistance * L;
+    const crownBase = sp.crown.baseHeight + sp.crown.height * 0.1;
+    // at the node budget the crown is frozen: only shedding and secondary growth continue
+    const anySpace = this.markers.remaining > 0 && this.nodeCount < this.opts.maxNodes;
+    for (const b of this.buds) {
+      if (!b.alive) continue;
+      b.v = 0; // allocation is recomputed every season
+      const x = this.px[b.node], y = this.py[b.node], z = this.pz[b.node];
+      b.light = this.shadow.lightAt(x, y, z);
+      // deeply shaded buds cannot grow whatever the space; skip the expensive cone query
+      const cnt = anySpace && b.light > 0.05 ? this.markers.perceive(x, y, z, b.dx, b.dy, b.dz, dist, cosA, this.scratch) : 0;
+      let qs: number;
+      if (cnt > 0) {
+        qs = Math.min(1, cnt / 6);
+        const m = 1 / Math.hypot(this.scratch[0], this.scratch[1], this.scratch[2]);
+        b.ox = this.scratch[0] * m; b.oy = this.scratch[1] * m; b.oz = this.scratch[2] * m;
+      } else {
+        // the leader keeps seeking upward until it reaches the crown; everything else needs space
+        qs = b.order === 0 && y < crownBase ? 0.6 : 0;
+        b.ox = b.dx; b.oy = b.dy; b.oz = b.dz;
+      }
+      b.q = qs * b.light;
+    }
+
+    this.profile.perceive += TreeGrowth.now() - t; t = TreeGrowth.now();
+
+    // 3. accumulate Q toward the root (children always have larger indices)
+    for (let i = 0; i < n; i++) { this.nodeQ[i] = 0; this.nodeLight[i] = 0; }
+    for (const b of this.buds) if (b.alive) { this.nodeQ[b.node] += b.q; this.nodeLight[b.node] += b.light; }
+    for (let i = n - 1; i > 0; i--) if (this.alive[i]) { const p = this.parent[i]; this.nodeQ[p] += this.nodeQ[i]; this.nodeLight[p] += this.nodeLight[i]; }
+
+    // 4. distribute resource v from the root (Borchert–Honda with apical control λ)
+    const lambda = sp.apicalControl;
+    for (let i = 0; i < n; i++) this.nodeV[i] = 0;
+    this.nodeV[0] = sp.resourceScale * this.nodeQ[0];
+    for (let i = 0; i < n; i++) {
+      if (!this.alive[i]) continue;
+      const v = this.nodeV[i];
+      if (v <= 0) continue;
+      const mc = this.mainChild[i];
+      let qm = 0;
+      let termBud: Bud | null = null;
+      if (mc >= 0 && this.alive[mc]) qm = this.nodeQ[mc];
+      else {
+        // terminal bud lives on a tip node
+        for (const bi of this.nodeBuds[i]) { const b = this.buds[bi]; if (b.alive && !b.lateral) { termBud = b; qm = b.q; } }
+      }
+      let ql = 0;
+      for (const c of this.children[i]) if (this.alive[c] && c !== mc) ql += this.nodeQ[c];
+      for (const bi of this.nodeBuds[i]) { const b = this.buds[bi]; if (b.alive && b.lateral) ql += b.q; }
+      const denom = lambda * qm + (1 - lambda) * ql;
+      const vm = denom > 0 ? (v * lambda * qm) / denom : 0;
+      const vl = v - vm;
+      if (mc >= 0 && this.alive[mc]) this.nodeV[mc] = vm; else if (termBud) termBud.v = vm;
+      if (ql > 0) {
+        for (const c of this.children[i]) if (this.alive[c] && c !== mc) this.nodeV[c] = (vl * this.nodeQ[c]) / ql;
+        for (const bi of this.nodeBuds[i]) { const b = this.buds[bi]; if (b.alive && b.lateral) b.v = (vl * b.q) / ql; }
+      }
+    }
+
+    this.profile.allocate += TreeGrowth.now() - t; t = TreeGrowth.now();
+
+    // 5. shoot production
+    const budCount = this.buds.length; // new buds appended during the loop are not grown this year
+    for (let bi = 0; bi < budCount; bi++) {
+      const b = this.buds[bi];
+      if (!b.alive) continue;
+      if (b.v < 1 || this.nodeCount >= this.opts.maxNodes) { b.age++; if (b.age > sp.budLifespan && b.lateral) b.alive = false; continue; }
+      this.growShoot(b, bi);
+    }
+
+    this.profile.shoots += TreeGrowth.now() - t; t = TreeGrowth.now();
+
+    // 6. shedding of under-lit lateral branches
+    this.shed();
+    this.profile.shed += TreeGrowth.now() - t; t = TreeGrowth.now();
+
+    // 7. secondary growth
+    this.secondaryGrowth();
+    this.profile.secondary += TreeGrowth.now() - t;
+    this.year++;
+  }
+
+  private growShoot(b: Bud, bi: number): void {
+    const sp = this.sp;
+    const rng = this.rng;
+    const L0 = sp.internodeLength * Math.max(0.4, 1 - 0.12 * b.order);
+    const nMet = Math.max(1, Math.min(Math.floor(b.v), Math.floor(sp.maxShootLength / L0)));
+    const lenScale = Math.min(1.35, Math.sqrt(b.v / nMet));
+    const L = Math.min(L0 * lenScale, sp.maxShootLength / nMet);
+    const cosA = Math.cos(sp.perceptionAngle * DEG);
+    const dist = sp.perceptionDistance * sp.internodeLength;
+    let cur = b.node;
+    let pdx = b.dx, pdy = b.dy, pdz = b.dz;
+    // the trunk is always orthotropic; weeping (negative gravitropism) only affects laterals and grows with order
+    const grav = b.order === 0 ? Math.max(0.3, sp.gravitropism) : sp.gravitropism < 0 ? sp.gravitropism * Math.min(1, b.order / 2) : sp.gravitropism;
+    // detach bud from its node list
+    const list = this.nodeBuds[b.node];
+    const at = list.indexOf(bi); if (at >= 0) list.splice(at, 1);
+    const wasLateral = b.lateral;
+
+    for (let k = 0; k < nMet; k++) {
+      if (k > 0) {
+        const cnt = this.markers.perceive(this.px[cur], this.py[cur], this.pz[cur], pdx, pdy, pdz, dist, cosA, this.scratch);
+        if (cnt > 0) { const m = 1 / Math.hypot(this.scratch[0], this.scratch[1], this.scratch[2]); b.ox = this.scratch[0] * m; b.oy = this.scratch[1] * m; b.oz = this.scratch[2] * m; }
+        else if (b.order > 0) break; // ran out of space mid-shoot
+      }
+      let gx = pdx * sp.directionInertia + b.ox * sp.phototropism + rng.gauss() * sp.noise;
+      let gy = pdy * sp.directionInertia + b.oy * sp.phototropism + rng.gauss() * sp.noise + grav;
+      let gz = pdz * sp.directionInertia + b.oz * sp.phototropism + rng.gauss() * sp.noise;
+      let m = Math.hypot(gx, gy, gz); if (m < 1e-6) { gx = 0; gy = 1; gz = 0; m = 1; }
+      gx /= m; gy /= m; gz /= m;
+      let nx = this.px[cur] + gx * L, ny = this.py[cur] + gy * L, nz = this.pz[cur] + gz * L;
+      if (ny < 0.05) { ny = 0.05; }
+      const isMain = wasLateral && k === 0 ? 0 : 1;
+      const node = this.addNode(cur, nx, ny, nz, gx, gy, gz, b.order, isMain);
+      this.markers.consume(nx, ny, nz, sp.occupancyRadius * sp.internodeLength);
+
+      // lateral buds
+      if (b.order + 1 <= sp.maxOrder) {
+        if (sp.branchingMode === 'alternate') {
+          if (rng.chance(sp.lateralBudProbability)) {
+            b.phase += sp.phyllotaxis * DEG;
+            this.addLateralBud(node, gx, gy, gz, b.phase, b.order + 1);
+          }
+        } else if (k === nMet - 1) {
+          const cnt = sp.whorlCount;
+          const off = rng.next() * Math.PI * 2;
+          for (let w = 0; w < cnt; w++) if (rng.chance(sp.lateralBudProbability)) this.addLateralBud(node, gx, gy, gz, off + (w / cnt) * Math.PI * 2, b.order + 1);
+        } else if (rng.chance(sp.lateralBudProbability * 0.1)) {
+          this.addLateralBud(node, gx, gy, gz, rng.next() * Math.PI * 2, b.order + 1);
+        }
+      }
+      cur = node; pdx = gx; pdy = gy; pdz = gz;
+    }
+    // bud continues as the terminal bud of the shoot
+    b.node = cur; b.dx = pdx; b.dy = pdy; b.dz = pdz; b.lateral = false; b.age = 0;
+    this.nodeBuds[cur].push(bi);
+  }
+
+  private addLateralBud(node: number, ax: number, ay: number, az: number, phase: number, order: number): void {
+    const sp = this.sp;
+    // build an orthonormal frame around the axis
+    let ux: number, uy: number, uz: number;
+    if (Math.abs(ay) < 0.9) { ux = -az; uy = 0; uz = ax; } else { ux = 1; uy = 0; uz = 0; }
+    // u = normalize(u - (u·a)a)
+    const d = ux * ax + uy * ay + uz * az; ux -= d * ax; uy -= d * ay; uz -= d * az;
+    const um = Math.hypot(ux, uy, uz); ux /= um; uy /= um; uz /= um;
+    const vx = ay * uz - az * uy, vy = az * ux - ax * uz, vz = ax * uy - ay * ux;
+    const ang = sp.branchingAngle * DEG + this.rng.gauss() * 6 * DEG;
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    const cp = Math.cos(phase), spp = Math.sin(phase);
+    const bx = ax * ca + (ux * cp + vx * spp) * sa;
+    const by = ay * ca + (uy * cp + vy * spp) * sa;
+    const bz = az * ca + (uz * cp + vz * spp) * sa;
+    const bi = this.buds.length;
+    this.buds.push({ node, dx: bx, dy: by, dz: bz, order, lateral: true, age: 0, phase: this.rng.next() * Math.PI * 2, alive: true, q: 0, v: 0, light: 0, ox: bx, oy: by, oz: bz });
+    this.nodeBuds[node].push(bi);
+  }
+
+  private shed(): void {
+    const sp = this.sp;
+    const n = this.nodeCount;
+    // tips per subtree (live)
+    const tips = new Int32Array(n);
+    for (let i = n - 1; i >= 0; i--) {
+      if (!this.alive[i]) continue;
+      let hasLiveChild = false;
+      for (const c of this.children[i]) if (this.alive[c]) { hasLiveChild = true; break; }
+      if (!hasLiveChild) tips[i] = 1;
+      if (i > 0) tips[this.parent[i]] += tips[i];
+    }
+    for (let i = 1; i < n; i++) {
+      if (!this.alive[i] || this.isMain[i]) continue; // only whole lateral branches are shed
+      if (this.year - this.birthYear[i] < 2) continue;
+      const perTip = tips[i] > 0 ? this.nodeLight[i] / tips[i] : 0;
+      if (perTip < sp.shedThreshold) this.lowLightYears[i]++; else this.lowLightYears[i] = 0;
+      if (this.lowLightYears[i] >= sp.shedYears) this.killSubtree(i);
+    }
+  }
+
+  private killSubtree(root: number): void {
+    const stack = [root];
+    while (stack.length) {
+      const i = stack.pop()!;
+      if (!this.alive[i]) continue;
+      this.alive[i] = 0;
+      for (const bi of this.nodeBuds[i]) this.buds[bi].alive = false;
+      this.nodeBuds[i].length = 0;
+      for (const c of this.children[i]) stack.push(c);
+    }
+  }
+
+  private secondaryGrowth(): void {
+    const sp = this.sp;
+    const n = this.nodeCount;
+    for (let i = 0; i < n; i++) this.strands[i] = 0;
+    for (let i = n - 1; i >= 0; i--) {
+      if (!this.alive[i]) continue;
+      let hasLiveChild = false;
+      for (const c of this.children[i]) if (this.alive[c]) { hasLiveChild = true; break; }
+      if (!hasLiveChild) this.strands[i] = 1;
+      if (i > 0) this.strands[this.parent[i]] += this.strands[i];
+    }
+    const inv = 1 / sp.daVinciExponent;
+    for (let i = 0; i < n; i++) {
+      if (!this.alive[i]) continue;
+      const age = this.year + 1 - this.birthYear[i];
+      // wood never shrinks: heartwood laid down for tips that were later shed remains
+      this.radius[i] = Math.max(this.radius[i], sp.tipRadius * Math.pow(this.strands[i], inv) + sp.radialGrowthPerYear * Math.max(0, age - 1));
+    }
+  }
+
+  /** Pack live nodes into a compact SoA skeleton (parents before children preserved). */
+  toSkeleton(): Skeleton {
+    const n = this.nodeCount;
+    const remap = new Int32Array(n).fill(-1);
+    let count = 0;
+    for (let i = 0; i < n; i++) if (this.alive[i]) remap[i] = count++;
+    const sk: Skeleton = {
+      count,
+      parent: new Int32Array(count),
+      position: new Float32Array(count * 3),
+      birthYear: new Uint16Array(count),
+      order: new Uint8Array(count),
+      strands: new Uint32Array(count),
+      radius: new Float32Array(count),
+      isMain: new Uint8Array(count),
+      isTip: new Uint8Array(count),
+    };
+    for (let i = 0; i < n; i++) {
+      const j = remap[i]; if (j < 0) continue;
+      sk.parent[j] = this.parent[i] < 0 ? -1 : remap[this.parent[i]];
+      sk.position[j * 3] = this.px[i]; sk.position[j * 3 + 1] = this.py[i]; sk.position[j * 3 + 2] = this.pz[i];
+      sk.birthYear[j] = this.birthYear[i];
+      sk.order[j] = this.order[i];
+      sk.strands[j] = this.strands[i];
+      sk.radius[j] = this.radius[i];
+      sk.isMain[j] = this.isMain[i];
+      let tip = 1;
+      for (const c of this.children[i]) if (this.alive[c]) { tip = 0; break; }
+      sk.isTip[j] = tip;
+    }
+    return sk;
+  }
+
+  /** Utility for tests/tools: is a world point inside the species crown envelope. */
+  insideCrown(x: number, y: number, z: number): boolean { return insideEnvelope(this.sp.crown, x, y, z); }
+}

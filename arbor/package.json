@@ -1,0 +1,17 @@
+{
+  "name": "arbor",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Arbor: growth-based procedural plant generator for film and games (web-first).",
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "dev": "pnpm --filter @arbor/web dev",
+    "smoke": "pnpm --filter @arbor/web smoke"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

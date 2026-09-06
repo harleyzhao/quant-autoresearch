@@ -1,0 +1,66 @@
+{
+  "id": "quercus-robur",
+  "name": "English Oak",
+  "latinName": "Quercus robur",
+  "habit": "broadleaf",
+  "apicalControl": 0.42,
+  "resourceScale": 2.6,
+  "internodeLength": 0.28,
+  "maxShootLength": 0.7,
+  "perceptionAngle": 60,
+  "perceptionDistance": 5,
+  "occupancyRadius": 0.9,
+  "branchingAngle": 48,
+  "phyllotaxis": 137.5,
+  "branchingMode": "alternate",
+  "whorlCount": 0,
+  "lateralBudProbability": 0.45,
+  "budLifespan": 3,
+  "directionInertia": 1.0,
+  "phototropism": 0.9,
+  "gravitropism": 0.25,
+  "noise": 0.25,
+  "maxOrder": 10,
+  "shedThreshold": 0.1,
+  "shedYears": 4,
+  "daVinciExponent": 2.0,
+  "tipRadius": 0.0025,
+  "radialGrowthPerYear": 0.0022,
+  "crown": {
+    "shape": "spreading",
+    "height": 14,
+    "width": 16,
+    "baseHeight": 2.2
+  },
+  "leaf": {
+    "shape": "lobed",
+    "length": 0.11,
+    "width": 0.07,
+    "perNode": 3,
+    "maxShootAge": 1,
+    "maxBranchRadius": 0.012,
+    "color": [
+      0.11,
+      0.3,
+      0.06
+    ],
+    "autumnPigment": "brown"
+  },
+  "phenology": {
+    "budburstGDD": 190,
+    "leafExpandDays": 28,
+    "senescenceDay": 285,
+    "senescenceDays": 35,
+    "abscissionDay": 305,
+    "abscissionDays": 35,
+    "evergreen": false
+  },
+  "bark": {
+    "color": [
+      0.3,
+      0.25,
+      0.2
+    ],
+    "roughness": 0.95
+  }
+}

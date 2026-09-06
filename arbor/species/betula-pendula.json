@@ -1,0 +1,66 @@
+{
+  "id": "betula-pendula",
+  "name": "Silver Birch",
+  "latinName": "Betula pendula",
+  "habit": "broadleaf",
+  "apicalControl": 0.6,
+  "resourceScale": 3.0,
+  "internodeLength": 0.26,
+  "maxShootLength": 0.9,
+  "perceptionAngle": 55,
+  "perceptionDistance": 5,
+  "occupancyRadius": 1.0,
+  "branchingAngle": 38,
+  "phyllotaxis": 137.5,
+  "branchingMode": "alternate",
+  "whorlCount": 0,
+  "lateralBudProbability": 0.5,
+  "budLifespan": 2,
+  "directionInertia": 1.0,
+  "phototropism": 0.7,
+  "gravitropism": -0.22,
+  "noise": 0.3,
+  "maxOrder": 10,
+  "shedThreshold": 0.15,
+  "shedYears": 2,
+  "daVinciExponent": 2.1,
+  "tipRadius": 0.002,
+  "radialGrowthPerYear": 0.0016,
+  "crown": {
+    "shape": "ellipsoid",
+    "height": 15,
+    "width": 8,
+    "baseHeight": 2.5
+  },
+  "leaf": {
+    "shape": "ovate",
+    "length": 0.06,
+    "width": 0.045,
+    "perNode": 3,
+    "maxShootAge": 1,
+    "maxBranchRadius": 0.008,
+    "color": [
+      0.16,
+      0.36,
+      0.08
+    ],
+    "autumnPigment": "yellow"
+  },
+  "phenology": {
+    "budburstGDD": 120,
+    "leafExpandDays": 20,
+    "senescenceDay": 265,
+    "senescenceDays": 28,
+    "abscissionDay": 285,
+    "abscissionDays": 30,
+    "evergreen": false
+  },
+  "bark": {
+    "color": [
+      0.85,
+      0.84,
+      0.8
+    ],
+    "roughness": 0.7
+  }
+}
