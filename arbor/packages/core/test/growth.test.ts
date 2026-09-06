@@ -126,3 +126,18 @@ describe('environment obstacles', () => {
     expect(beyond / sk.count).toBeLessThan(0.05); // almost nothing reaches over/around the wall at this age
   });
 });
+
+describe('dead wood retention', () => {
+  it('shed branches stay as dead wood for deadBranchYears, carry no leaves, then fall', async () => {
+    await breathe();
+    const sp = getSpecies('pinus-sylvestris');
+    const withDead = generate({ ...sp, deadBranchYears: 6 }, ind(4, 22));
+    const without = generate({ ...sp, deadBranchYears: 0 }, ind(4, 22));
+    let dead = 0; for (let i = 0; i < withDead.skeleton.count; i++) dead += withDead.skeleton.dead[i];
+    expect(dead).toBeGreaterThan(0);
+    expect(withDead.skeleton.count - dead).toBe(without.skeleton.count); // live structure identical
+    for (let k = 0; k < withDead.leaves.count; k++) expect(withDead.skeleton.dead[withDead.leaves.node[k]]).toBe(0);
+    // dead nodes hang off kept parents only
+    for (let i = 1; i < withDead.skeleton.count; i++) expect(withDead.skeleton.parent[i]).toBeGreaterThanOrEqual(0);
+  });
+});

@@ -80,5 +80,6 @@
     "roughness": 0.9,
     "family": "ridged",
     "scale": 2.0
-  }
+  },
+  "deadBranchYears": 3
 }

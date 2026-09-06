@@ -39,6 +39,7 @@ for (const f of files) {
     if (typeof v !== 'number' || !Number.isFinite(v)) { errs.push(`${k}: missing or not a number`); continue; }
     if (v < lo || v > hi) errs.push(`${k}=${v} outside [${lo}, ${hi}]`);
   }
+  if (sp.deadBranchYears !== undefined && !((sp.deadBranchYears as number) >= 0 && (sp.deadBranchYears as number) <= 12)) errs.push('deadBranchYears outside [0, 12]');
   if (sp.lateralGravitropism !== undefined && (typeof sp.lateralGravitropism !== 'number' || Math.abs(sp.lateralGravitropism as number) > 0.6)) errs.push('lateralGravitropism outside [-0.6, 0.6]');
   if (!['alternate', 'whorled'].includes(String(sp.branchingMode))) errs.push('branchingMode must be alternate|whorled');
   if (sp.branchingMode === 'whorled' && !((sp.whorlCount as number) >= 3)) errs.push('whorled species need whorlCount >= 3');

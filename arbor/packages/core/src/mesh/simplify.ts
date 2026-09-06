@@ -26,7 +26,7 @@ export function simplifySkeleton(sk: Skeleton, angleDeg = 6, maxLength = 1.5): {
     const la = Math.hypot(ax, ay, az), lb = Math.hypot(bx, by, bz);
     let straight = true;
     if (lb > 1e-6 && la > 1e-6) straight = (ax * bx + ay * by + az * bz) / (la * lb) >= cosTol;
-    const mustKeep = sk.isTip[i] || childCount[i] !== 1 || !sk.isMain[i] || !keep[p] && childCount[p] !== 1;
+    const mustKeep = sk.isTip[i] || childCount[i] !== 1 || !sk.isMain[i] || (!keep[p] && childCount[p] !== 1) || sk.dead[i] !== sk.dead[p];
     if (mustKeep || !straight || la > maxLength || sk.radius[p] > sk.radius[i] * 1.25) {
       // keep the parent if it was dropped and this node bends away from the accumulated chain
       if (!keep[p] && (!straight || la > maxLength)) keep[p] = 1;
@@ -49,6 +49,7 @@ export function simplifySkeleton(sk: Skeleton, angleDeg = 6, maxLength = 1.5): {
     radius: new Float32Array(count),
     isMain: new Uint8Array(count),
     isTip: new Uint8Array(count),
+    dead: new Uint8Array(count),
   };
   const oldIndex = new Int32Array(count);
   for (let i = 0; i < n; i++) {
@@ -58,7 +59,7 @@ export function simplifySkeleton(sk: Skeleton, angleDeg = 6, maxLength = 1.5): {
     out.parent[j] = p < 0 ? -1 : remap[p];
     out.position[j * 3] = P[i * 3]; out.position[j * 3 + 1] = P[i * 3 + 1]; out.position[j * 3 + 2] = P[i * 3 + 2];
     out.birthYear[j] = sk.birthYear[i]; out.order[j] = sk.order[i]; out.strands[j] = sk.strands[i];
-    out.radius[j] = sk.radius[i]; out.isMain[j] = sk.isMain[i]; out.isTip[j] = sk.isTip[i];
+    out.radius[j] = sk.radius[i]; out.isMain[j] = sk.isMain[i]; out.isTip[j] = sk.isTip[i]; out.dead[j] = sk.dead[i];
     oldIndex[j] = i;
   }
   return { skeleton: out, oldIndex };

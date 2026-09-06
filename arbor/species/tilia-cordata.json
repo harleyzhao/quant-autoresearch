@@ -79,5 +79,6 @@
   "axisKink": 0.12,
   "flexibility": 1.2e-08,
   "sagMax": 0.5,
-  "lateralGravitropism": -0.05
+  "lateralGravitropism": -0.05,
+  "deadBranchYears": 3
 }

@@ -118,6 +118,8 @@ export interface SpeciesParams {
   /** Branches whose mean light per tip falls below this for shedYears consecutive years are shed. */
   shedThreshold: number;
   shedYears: number;
+  /** Years a shed branch stays on the tree as dead wood before it falls (0 = removed immediately). */
+  deadBranchYears?: number;
 
   // --- secondary growth (pipe model) ---
   /** n in r_parent^n = Σ r_child^n. Leonardo's rule = 2. */
@@ -170,6 +172,8 @@ export interface Skeleton {
   isMain: Uint8Array;
   /** 1 if node has no children. */
   isTip: Uint8Array;
+  /** 1 for retained dead wood: no leaves, no growth, radius frozen. */
+  dead: Uint8Array;
 }
 
 export interface BranchMesh {

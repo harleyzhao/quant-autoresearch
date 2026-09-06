@@ -91,12 +91,12 @@ export function skeletonStats(sk: Skeleton, sp: SpeciesParams) {
     const x = sk.position[i * 3], y = sk.position[i * 3 + 1], z = sk.position[i * 3 + 2];
     if (y > height) height = y;
     if (x < minx) minx = x; if (x > maxx) maxx = x; if (z < minz) minz = z; if (z > maxz) maxz = z;
-    if (sk.isTip[i]) tips++;
+    if (sk.isTip[i] && !sk.dead[i]) tips++;
   }
   // pipe-model check: Σ r_child^n / r_parent^n over internal nodes, ignoring the age-thickening term
   const childSum = new Float64Array(n);
-  for (let i = 1; i < n; i++) childSum[sk.parent[i]] += Math.pow(sk.radius[i], sp.daVinciExponent);
+  for (let i = 1; i < n; i++) if (!sk.dead[i]) childSum[sk.parent[i]] += Math.pow(sk.radius[i], sp.daVinciExponent);
   let acc = 0, cnt = 0;
-  for (let i = 0; i < n; i++) if (!sk.isTip[i] && sk.radius[i] > 0) { acc += childSum[i] / Math.pow(sk.radius[i], sp.daVinciExponent); cnt++; }
+  for (let i = 0; i < n; i++) if (!sk.isTip[i] && !sk.dead[i] && sk.radius[i] > 0 && childSum[i] > 0) { acc += childSum[i] / Math.pow(sk.radius[i], sp.daVinciExponent); cnt++; }
   return { nodes: n, tips, height, crownWidth: Math.max(maxx - minx, maxz - minz), trunkRadius: sk.radius[0], pipeModelRatio: cnt ? acc / cnt : 0 };
 }

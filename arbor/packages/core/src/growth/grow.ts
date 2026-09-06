@@ -75,6 +75,8 @@ export class TreeGrowth {
   lowLightYears: number[] = [];
   /** accumulated gravitational bend per lateral root (rad) */
   sag: number[] = [];
+  /** season in which the node died (-1 = alive) */
+  deadYear: number[] = [];
   // per-year derived
   nodeQ: number[] = [];
   nodeLight: number[] = [];
@@ -143,6 +145,7 @@ export class TreeGrowth {
     this.mainChild.push(-1);
     this.lowLightYears.push(0);
     this.sag.push(0);
+    this.deadYear.push(-1);
     this.nodeQ.push(0); this.nodeLight.push(0); this.nodeV.push(0); this.strands.push(0); this.radius.push(0);
     this.nodeBuds.push([]);
     if (parent >= 0) {
@@ -477,6 +480,7 @@ export class TreeGrowth {
       const i = stack.pop()!;
       if (!this.alive[i]) continue;
       this.alive[i] = 0;
+      this.deadYear[i] = this.year;
       for (const bi of this.nodeBuds[i]) this.buds[bi].alive = false;
       this.nodeBuds[i].length = 0;
       for (const c of this.children[i]) stack.push(c);
@@ -507,8 +511,15 @@ export class TreeGrowth {
   toSkeleton(): Skeleton {
     const n = this.nodeCount;
     const remap = new Int32Array(n).fill(-1);
+    const retain = this.sp.deadBranchYears ?? 0;
+    // a dead node is kept only if it died recently and its parent is kept (dead wood falls from the break outward)
+    const keep = new Uint8Array(n);
     let count = 0;
-    for (let i = 0; i < n; i++) if (this.alive[i]) remap[i] = count++;
+    for (let i = 0; i < n; i++) {
+      if (this.alive[i]) keep[i] = 1;
+      else if (retain > 0 && this.deadYear[i] >= 0 && this.year - this.deadYear[i] < retain) { const p = this.parent[i]; keep[i] = p < 0 || keep[p] ? 1 : 0; }
+      if (keep[i]) remap[i] = count++;
+    }
     const sk: Skeleton = {
       count,
       parent: new Int32Array(count),
@@ -519,9 +530,11 @@ export class TreeGrowth {
       radius: new Float32Array(count),
       isMain: new Uint8Array(count),
       isTip: new Uint8Array(count),
+      dead: new Uint8Array(count),
     };
     for (let i = 0; i < n; i++) {
       const j = remap[i]; if (j < 0) continue;
+      sk.dead[j] = this.alive[i] ? 0 : 1;
       sk.parent[j] = this.parent[i] < 0 ? -1 : remap[this.parent[i]];
       sk.position[j * 3] = this.px[i]; sk.position[j * 3 + 1] = this.py[i]; sk.position[j * 3 + 2] = this.pz[i];
       sk.birthYear[j] = this.birthYear[i];
@@ -530,7 +543,7 @@ export class TreeGrowth {
       sk.radius[j] = this.radius[i];
       sk.isMain[j] = this.isMain[i];
       let tip = 1;
-      for (const c of this.children[i]) if (this.alive[c]) { tip = 0; break; }
+      for (const c of this.children[i]) if (keep[c]) { tip = 0; break; }
       sk.isTip[j] = tip;
     }
     return sk;

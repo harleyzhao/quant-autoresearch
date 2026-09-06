@@ -80,5 +80,6 @@
   "lateralShootScale": 0.85,
   "axisKink": 0.15,
   "flexibility": 7e-09,
-  "sagMax": 0.4
+  "sagMax": 0.4,
+  "deadBranchYears": 3
 }
