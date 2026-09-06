@@ -10,7 +10,7 @@ import { leafColor } from '../growth/phenology.js';
 export function buildLeaves(sk: Skeleton, sp: SpeciesParams, ph: PhenologyState, currentYear: number, seed: number): LeafInstances {
   const rng = new Rng(seed ^ 0x5eaf);
   const lf = sp.leaf;
-  const cluster = lf.shape === 'needle' ? 1 : LEAF_CLUSTER_SIZE;
+  const cluster = leafClusterSize(lf);
   const n = sk.count;
   const P = sk.position;
   let height = 0; for (let i = 0; i < n; i++) if (P[i * 3 + 1] > height) height = P[i * 3 + 1];
@@ -86,6 +86,12 @@ export function buildLeaves(sk: Skeleton, sp: SpeciesParams, ph: PhenologyState,
 
 /** Broadleaf instances are sprays of this many leaves (baked into one card by the renderer). */
 export const LEAF_CLUSTER_SIZE = 3;
+
+/** Small leaves are grouped into larger sprays so their cards keep enough alpha coverage at distance. */
+export function leafClusterSize(lf: { shape: string; length: number }): number {
+  if (lf.shape === 'needle') return 1;
+  return lf.length < 0.08 ? 5 : LEAF_CLUSTER_SIZE;
+}
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 

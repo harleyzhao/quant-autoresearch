@@ -41,7 +41,7 @@
     "length": 0.14,
     "width": 0.16,
     "perNode": 4,
-    "maxShootAge": 1,
+    "maxShootAge": 2,
     "maxBranchRadius": 0.01,
     "color": [
       0.12,
@@ -87,5 +87,5 @@
     ],
     "twigRadius": 0.01
   },
-  "deadBranchYears": 3
+  "deadBranchYears": 2
 }

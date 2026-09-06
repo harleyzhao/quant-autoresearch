@@ -36,7 +36,7 @@
     "shape": "needle",
     "length": 0.065,
     "width": 0.005,
-    "perNode": 3,
+    "perNode": 5,
     "maxShootAge": 3,
     "maxBranchRadius": 0.009,
     "color": [

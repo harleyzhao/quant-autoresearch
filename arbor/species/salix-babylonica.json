@@ -3,7 +3,7 @@
   "name": "Weeping Willow",
   "latinName": "Salix babylonica",
   "habit": "broadleaf",
-  "apicalControl": 0.55,
+  "apicalControl": 0.6,
   "resourceScale": 3.4,
   "internodeLength": 0.3,
   "maxShootLength": 1.2,
@@ -37,7 +37,7 @@
     "length": 0.12,
     "width": 0.015,
     "perNode": 8,
-    "maxShootAge": 1,
+    "maxShootAge": 2,
     "maxBranchRadius": 0.008,
     "color": [
       0.2,
@@ -84,8 +84,8 @@
   },
   "lateralShootScale": 1.0,
   "axisKink": 0.1,
-  "flexibility": 2.5e-08,
-  "sagMax": 1.0,
-  "lateralGravitropism": -0.15,
+  "flexibility": 2e-08,
+  "sagMax": 0.7,
+  "lateralGravitropism": -0.1,
   "deadBranchYears": 2
 }

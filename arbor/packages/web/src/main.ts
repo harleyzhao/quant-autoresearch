@@ -240,7 +240,7 @@ function leafAssets(sp: SpeciesParams, leavesPerInstance: number): LeafAssets {
     const geometry = leafCardGeometry(sp, textures);
     const material = new THREE.MeshStandardMaterial({
       map: textures.map, normalMap: textures.normalMap, normalScale: new THREE.Vector2(0.6, 0.6),
-      alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.55, metalness: 0,
+      alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.55, metalness: 0,
     });
     material.color.setRGB(1.2, 1.2, 1.2, THREE.LinearSRGBColorSpace); // compensate the 0.8 lamina base so the instance colour is the hue
     // alpha-tested shadows: WebGLShadowMap copies map + alphaTest into its depth material, so no customDepthMaterial is needed

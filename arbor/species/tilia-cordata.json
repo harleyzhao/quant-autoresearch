@@ -37,7 +37,7 @@
     "length": 0.06,
     "width": 0.06,
     "perNode": 5,
-    "maxShootAge": 1,
+    "maxShootAge": 2,
     "maxBranchRadius": 0.009,
     "color": [
       0.13,
@@ -86,5 +86,5 @@
   "flexibility": 1.2e-08,
   "sagMax": 0.5,
   "lateralGravitropism": -0.05,
-  "deadBranchYears": 3
+  "deadBranchYears": 2
 }
