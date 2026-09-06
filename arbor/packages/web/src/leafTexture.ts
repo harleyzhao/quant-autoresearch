@@ -327,8 +327,18 @@ function cardLayout(sp: SpeciesParams, k: number): CardLayout {
 /** Silhouette for a species (family from `leaf.shape`, tuned by `leaf.shapeParams`). */
 export function speciesSilhouette(sp: SpeciesParams): LeafSilhouette {
   const fam = leafFamilyOf(sp.leaf.shape);
-  return leafSilhouette(resolveLeafShape(fam.family, { ...fam.overrides, ...(sp.leaf.shapeParams ?? {}) }), 96);
+  const overrides = { ...fam.overrides, ...(sp.leaf.shapeParams ?? {}) };
+  if (fam.family === 'needle') {
+    // the needle card is one shoot segment: unit length = shootLength(sp); needle length/width relative to it
+    const shoot = shootLength(sp);
+    overrides.needle = { ...(overrides.needle ?? {}), length: Math.min(0.45, sp.leaf.length / shoot) } as typeof overrides.needle;
+    overrides.aspect = Math.max(0.006, Math.max(sp.leaf.width, 0.0025) / shoot);
+  }
+  return leafSilhouette(resolveLeafShape(fam.family, overrides), 96);
 }
+
+/** Length of shoot represented by one needle-card instance (matches the kernel's needle instance spacing). */
+export function shootLength(sp: SpeciesParams): number { return sp.internodeLength * 0.6; }
 
 /** Bake (or fetch) the textures for a species' leaf card holding `leavesPerInstance` leaves. */
 export function leafTextures(sp: SpeciesParams, leavesPerInstance = 1): LeafTextures {

@@ -88,9 +88,9 @@ export function buildLeaves(sk: Skeleton, sp: SpeciesParams, ph: PhenologyState,
 export const LEAF_CLUSTER_SIZE = 3;
 
 /** Small leaves are grouped into larger sprays so their cards keep enough alpha coverage at distance. */
-export function leafClusterSize(lf: { shape: string; length: number }): number {
+export function leafClusterSize(lf: { shape: string; length: number; width: number }): number {
   if (lf.shape === 'needle') return 1;
-  return lf.length < 0.08 ? 5 : LEAF_CLUSTER_SIZE;
+  return lf.length * lf.width < 0.004 ? 5 : LEAF_CLUSTER_SIZE;
 }
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);

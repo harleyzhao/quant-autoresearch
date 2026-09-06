@@ -9,7 +9,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { Pane } from 'tweakpane';
 import { SPECIES, SPECIES_IDS, type BarkFamily, type CrownShape, type IndividualParams, type PlantModel, type SpeciesParams } from '@arbor/core';
 import type { GenerateRequest, GenerateResponse } from './worker.js';
-import { leafTextures, type LeafTextures } from './leafTexture.js';
+import { leafTextures, shootLength, type LeafTextures } from './leafTexture.js';
 import { barkTextures, type BarkTextures } from './barkTexture.js';
 
 declare global {
@@ -192,8 +192,8 @@ const leafAssetCache = new Map<string, LeafAssets>();
  * +X across (unit-frame x), blade normal +Y. Unit length 1 <-> species leaf length in metres;
  * the card spans the silhouette bbox (aspect preserved) with uvs matching the baked texture.
  */
-function leafCardGeometry(sp: SpeciesParams, tex: LeafTextures): THREE.BufferGeometry {
-  const L = sp.leaf.length;
+function leafCardGeometry(sp: SpeciesParams, tex: LeafTextures, unitLength = sp.leaf.length, crossed = false): THREE.BufferGeometry {
+  const L = unitLength;
   const { minX, maxX, minY, maxY } = tex.bbox;
   const NX = 2, NZ = 6; // across, along
   const halfW = Math.max(1e-3, Math.max(Math.abs(minX), Math.abs(maxX)));
@@ -215,6 +215,12 @@ function leafCardGeometry(sp: SpeciesParams, tex: LeafTextures): THREE.BufferGeo
     const a = j * row + i, b = a + 1, c = a + row, d = c + 1;
     idx.push(a, c, d, a, d, b); // CCW seen from +Y
   }
+  if (crossed) {
+    const n = pos.length / 3;
+    for (let k = 0; k < n; k++) { const x = pos[k * 3], y = pos[k * 3 + 1], z = pos[k * 3 + 2]; pos.push(-y, x, z); uv.push(uv[k * 2], uv[k * 2 + 1]); }
+    const m = idx.length;
+    for (let k = 0; k < m; k++) idx.push(idx[k] + n);
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
@@ -230,14 +236,12 @@ function leafAssets(sp: SpeciesParams, leavesPerInstance: number): LeafAssets {
   const hit = leafAssetCache.get(key);
   if (hit) return hit;
   let out: LeafAssets;
-  if (sp.leaf.shape === 'needle') {
-    const geometry = needleBrushGeometry(sp.leaf.length, Math.max(sp.leaf.width, 0.003), sp.internodeLength * 0.6);
-    const material = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.7, metalness: 0 });
-    out = { geometry, material, textures: null };
-  } else {
+  {
+    const needle = sp.leaf.shape === 'needle';
     const t0 = performance.now();
     const textures = leafTextures(sp, k);
-    const geometry = leafCardGeometry(sp, textures);
+    // conifers: one textured shoot per instance, two crossed cards for volume; unit length = shoot length
+    const geometry = needle ? leafCardGeometry(sp, textures, shootLength(sp), true) : leafCardGeometry(sp, textures);
     const material = new THREE.MeshStandardMaterial({
       map: textures.map, normalMap: textures.normalMap, normalScale: new THREE.Vector2(0.6, 0.6),
       alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.55, metalness: 0,

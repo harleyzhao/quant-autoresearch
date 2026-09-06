@@ -21,7 +21,7 @@
   "gravitropism": 0.12,
   "noise": 0.3,
   "maxOrder": 10,
-  "shedThreshold": 0.08,
+  "shedThreshold": 0.12,
   "shedYears": 4,
   "daVinciExponent": 2.0,
   "tipRadius": 0.0016,
