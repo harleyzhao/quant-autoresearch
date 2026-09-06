@@ -1,6 +1,6 @@
 export * from './types.js';
 export { Rng, hash01 } from './rng.js';
-export { TreeGrowth } from './growth/grow.js';
+export { TreeGrowth, insideObstacle } from './growth/grow.js';
 export type { GrowthOptions } from './growth/grow.js';
 export { MarkerField, generateMarkers, insideEnvelope } from './growth/markers.js';
 export { ShadowGrid } from './growth/shadow.js';

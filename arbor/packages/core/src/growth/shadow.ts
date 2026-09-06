@@ -19,9 +19,13 @@ export class ShadowGrid {
     this.data = new Float32Array(0);
   }
 
-  /** Recompute the grid for the given node positions. */
-  rebuild(px: Float32Array, count: number): void {
+  /** Recompute the grid for the given node positions (optionally enlarging the bounds to cover `extra` points, e.g. obstacle corners). */
+  rebuild(px: Float32Array, count: number, extra?: Float32Array): void {
     let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
+    if (extra) for (let i = 0; i < extra.length; i += 3) {
+      const x = extra[i], y = extra[i + 1], z = extra[i + 2];
+      if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; if (z < minz) minz = z; if (z > maxz) maxz = z;
+    }
     for (let i = 0; i < count; i++) {
       const x = px[i * 3], y = px[i * 3 + 1], z = px[i * 3 + 2];
       if (x < minx) minx = x; if (x > maxx) maxx = x;
@@ -54,6 +58,22 @@ export class ShadowGrid {
         }
       }
     }
+  }
+
+  /**
+   * Add an opaque axis-aligned box: voxels inside get `inside` shadow, voxels below its footprint get
+   * `below` (a building shades the ground under and next to it far more than foliage does).
+   */
+  addBox(min: [number, number, number], max: [number, number, number], inside = 10, below = 0.6): void {
+    const inv = 1 / this.voxel;
+    const x0 = Math.max(0, Math.floor((min[0] - this.ox) * inv)), x1 = Math.min(this.nx - 1, Math.floor((max[0] - this.ox) * inv));
+    const y0 = Math.max(0, Math.floor((min[1] - this.oy) * inv)), y1 = Math.min(this.ny - 1, Math.floor((max[1] - this.oy) * inv));
+    const z0 = Math.max(0, Math.floor((min[2] - this.oz) * inv)), z1 = Math.min(this.nz - 1, Math.floor((max[2] - this.oz) * inv));
+    for (let x = x0; x <= x1; x++)
+      for (let z = z0; z <= z1; z++) {
+        for (let y = y0; y <= y1; y++) this.data[(x * this.ny + y) * this.nz + z] += inside;
+        for (let y = 0; y < y0; y++) this.data[(x * this.ny + y) * this.nz + z] += below;
+      }
   }
 
   shadowAt(x: number, y: number, z: number): number {

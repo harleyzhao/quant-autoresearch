@@ -1,4 +1,4 @@
-import type { SpeciesParams, Skeleton } from '../types.js';
+import type { SpeciesParams, Skeleton, Obstacle } from '../types.js';
 import { Rng } from '../rng.js';
 import { MarkerField, generateMarkers, insideEnvelope } from './markers.js';
 import { ShadowGrid } from './shadow.js';
@@ -43,6 +43,14 @@ export interface GrowthOptions {
   shadowSpread?: number;
   /** Recompute marker occupancy from scratch every N years (frees space left by shed branches). */
   occupancyRefresh?: number;
+  /** Environment obstacles: no markers inside, shoots stop at the surface, boxes cast shade. */
+  obstacles?: Obstacle[];
+}
+
+export function insideObstacle(o: Obstacle, x: number, y: number, z: number): boolean {
+  if (o.kind === 'box') return x >= o.min[0] && x <= o.max[0] && y >= o.min[1] && y <= o.max[1] && z >= o.min[2] && z <= o.max[2];
+  const dx = x - o.center[0], dy = y - o.center[1], dz = z - o.center[2];
+  return dx * dx + dy * dy + dz * dz <= o.radius * o.radius;
 }
 
 const DEG = Math.PI / 180;
@@ -50,7 +58,9 @@ const DEG = Math.PI / 180;
 export class TreeGrowth {
   readonly sp: SpeciesParams;
   readonly rng: Rng;
-  private opts: Required<GrowthOptions>;
+  private opts: Required<Omit<GrowthOptions, 'obstacles'>>;
+  readonly obstacles: Obstacle[];
+  private obstacleCorners: Float32Array | undefined;
 
   // node storage (growable)
   parent: number[] = [];
@@ -87,8 +97,22 @@ export class TreeGrowth {
     this.sp = species;
     this.rng = new Rng(seed);
     this.opts = { maxNodes: opts.maxNodes ?? 60_000, markerSpacing: opts.markerSpacing ?? 0.85, shadowA: opts.shadowA ?? 0.05, shadowB: opts.shadowB ?? 2.0, shadowDepth: opts.shadowDepth ?? 6, shadowSpread: opts.shadowSpread ?? 0.6, occupancyRefresh: opts.occupancyRefresh ?? 4 };
+    this.obstacles = opts.obstacles ?? [];
+    if (this.obstacles.length) {
+      const c: number[] = [];
+      for (const o of this.obstacles) {
+        if (o.kind === 'box') c.push(...o.min, ...o.max);
+        else c.push(o.center[0] - o.radius, o.center[1] - o.radius, o.center[2] - o.radius, o.center[0] + o.radius, o.center[1] + o.radius, o.center[2] + o.radius);
+      }
+      this.obstacleCorners = Float32Array.from(c);
+    }
     const L = species.internodeLength;
-    const pts = generateMarkers(species.crown, L * this.opts.markerSpacing, this.rng.fork(1));
+    let pts = generateMarkers(species.crown, L * this.opts.markerSpacing, this.rng.fork(1));
+    if (this.obstacles.length) {
+      const keep: number[] = [];
+      for (let i = 0; i < pts.length; i += 3) if (!this.blocked(pts[i], pts[i + 1], pts[i + 2])) keep.push(pts[i], pts[i + 1], pts[i + 2]);
+      pts = Float32Array.from(keep);
+    }
     this.markers = new MarkerField(pts, L * species.perceptionDistance * 0.5);
     this.shadow = new ShadowGrid(L * 1.0, this.opts.shadowA, this.opts.shadowB, this.opts.shadowDepth, this.opts.shadowSpread);
     // root node at ground
@@ -98,6 +122,12 @@ export class TreeGrowth {
   }
 
   get nodeCount(): number { return this.parent.length; }
+
+  /** True if the point is inside any obstacle. */
+  blocked(x: number, y: number, z: number): boolean {
+    for (const o of this.obstacles) if (insideObstacle(o, x, y, z)) return true;
+    return false;
+  }
 
   private addNode(parent: number, x: number, y: number, z: number, dx: number, dy: number, dz: number, order: number, isMain: number): number {
     const i = this.parent.length;
@@ -139,7 +169,11 @@ export class TreeGrowth {
       pos[live * 3] = this.px[i]; pos[live * 3 + 1] = this.py[i]; pos[live * 3 + 2] = this.pz[i]; live++;
     }
     let t = TreeGrowth.now();
-    this.shadow.rebuild(pos, live);
+    this.shadow.rebuild(pos, live, this.obstacleCorners);
+    for (const o of this.obstacles) {
+      if (o.kind === 'box') this.shadow.addBox(o.min, o.max);
+      else this.shadow.addBox([o.center[0] - o.radius, o.center[1] - o.radius, o.center[2] - o.radius], [o.center[0] + o.radius, o.center[1] + o.radius, o.center[2] + o.radius]);
+    }
     this.profile.light += TreeGrowth.now() - t; t = TreeGrowth.now();
 
     // 1b. dynamic occupancy: space is free again where branches were shed
@@ -282,6 +316,7 @@ export class TreeGrowth {
       gx /= m; gy /= m; gz /= m;
       let nx = this.px[cur] + gx * L, ny = this.py[cur] + gy * L, nz = this.pz[cur] + gz * L;
       if (ny < 0.05) { ny = 0.05; }
+      if (this.obstacles.length && this.blocked(nx, ny, nz)) break; // shoot stops at the obstacle surface
       const isMain = wasLateral && k === 0 ? 0 : 1;
       const node = this.addNode(cur, nx, ny, nz, gx, gy, gz, b.order, isMain);
       this.markers.consume(nx, ny, nz, sp.occupancyRadius * sp.internodeLength);
@@ -366,26 +401,32 @@ export class TreeGrowth {
       let theta = (sp.flexibility * moment) / (r * r * r);
       theta = Math.min(theta * years, 0.06 * years, sp.sagMax - this.sag[i]);
       if (theta < 1e-4) continue;
-      this.sag[i] += theta;
       // axis = horizontal ⟂ to the moment direction, oriented so a positive rotation lowers the branch:
       // rotating (mx,0,mz) about axis (mz,0,-mx)/|m| by +θ gives a negative y component.
       const ax = mz / moment, az = -mx / moment;
       sub.length = 0; stack.length = 0; stack.push(i);
       while (stack.length) { const j = stack.pop()!; if (!this.alive[j]) continue; sub.push(j); for (const c of this.children[j]) stack.push(c); }
-      this.rotateSubtree(sub, bx, by, bz, ax, az, theta);
+      if (this.rotateSubtree(sub, bx, by, bz, ax, az, theta)) this.sag[i] += theta;
     }
   }
 
-  private rotateSubtree(sub: number[], bx: number, by: number, bz: number, ax: number, az: number, theta: number): void {
+  /** Rigidly rotate a subtree about base b around horizontal axis (ax,0,az). Skipped (returns false) if it would enter an obstacle. */
+  private rotateSubtree(sub: number[], bx: number, by: number, bz: number, ax: number, az: number, theta: number): boolean {
     const c = Math.cos(theta), s1 = Math.sin(theta), oc = 1 - c;
     const m00 = c + ax * ax * oc, m01 = -az * s1, m02 = ax * az * oc;
     const m10 = az * s1, m11 = c, m12 = -ax * s1;
     const m20 = ax * az * oc, m21 = ax * s1, m22 = c + az * az * oc;
-    for (const j of sub) {
+    const tmp = new Float32Array(sub.length * 3);
+    for (let k = 0; k < sub.length; k++) {
+      const j = sub[k];
       const x = this.px[j] - bx, y = this.py[j] - by, z = this.pz[j] - bz;
-      this.px[j] = bx + m00 * x + m01 * y + m02 * z;
-      this.py[j] = Math.max(0.1, by + m10 * x + m11 * y + m12 * z);
-      this.pz[j] = bz + m20 * x + m21 * y + m22 * z;
+      const nx = bx + m00 * x + m01 * y + m02 * z, ny = Math.max(0.1, by + m10 * x + m11 * y + m12 * z), nz = bz + m20 * x + m21 * y + m22 * z;
+      if (this.obstacles.length && this.blocked(nx, ny, nz)) return false;
+      tmp[k * 3] = nx; tmp[k * 3 + 1] = ny; tmp[k * 3 + 2] = nz;
+    }
+    for (let k = 0; k < sub.length; k++) {
+      const j = sub[k];
+      this.px[j] = tmp[k * 3]; this.py[j] = tmp[k * 3 + 1]; this.pz[j] = tmp[k * 3 + 2];
       const dx = this.dx[j], dy = this.dy[j], dz = this.dz[j];
       this.dx[j] = m00 * dx + m01 * dy + m02 * dz; this.dy[j] = m10 * dx + m11 * dy + m12 * dz; this.dz[j] = m20 * dx + m21 * dy + m22 * dz;
       for (const bi of this.nodeBuds[j]) {
@@ -394,6 +435,7 @@ export class TreeGrowth {
         b.dx = m00 * ex + m01 * ey + m02 * ez; b.dy = m10 * ex + m11 * ey + m12 * ez; b.dz = m20 * ex + m21 * ey + m22 * ez;
       }
     }
+    return true;
   }
 
   private shed(): void {

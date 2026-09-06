@@ -25,6 +25,8 @@ interface OverrideState {
 }
 interface State extends OverrideState {
   species: string; seed: number; ageYears: number; dayOfYear: number; latitude: number; health: number;
+  /** Environment demo: a wall parallel to Z at x = wallDistance (0 = no wall). */
+  wallDistance: number; wallHeight: number;
 }
 
 function speciesDefaults(sp: SpeciesParams): OverrideState {
@@ -42,7 +44,13 @@ const OVERRIDE_KEYS: Record<keyof OverrideState, string> = {
   branchingAngle: 'branchingAngle', lateralBudProbability: 'lateralBudProbability',
 };
 
-const state: State = { species: SPECIES_IDS[0], seed: 1, ageYears: 25, dayOfYear: 190, latitude: 48, health: 1, ...speciesDefaults(SPECIES[SPECIES_IDS[0]]) };
+const state: State = { species: SPECIES_IDS[0], seed: 1, ageYears: 25, dayOfYear: 190, latitude: 48, health: 1, wallDistance: 0, wallHeight: 6, ...speciesDefaults(SPECIES[SPECIES_IDS[0]]) };
+
+function obstaclesFromState(): IndividualParams['obstacles'] {
+  if (!(state.wallDistance > 0)) return undefined;
+  const d = state.wallDistance;
+  return [{ kind: 'box', min: [d, 0, -12], max: [d + 0.4, state.wallHeight, 12] }];
+}
 
 function readHash(): void {
   const p = new URLSearchParams(location.hash.replace(/^#/, ''));
@@ -54,6 +62,8 @@ function readHash(): void {
   state.dayOfYear = num('day', state.dayOfYear);
   state.latitude = num('lat', state.latitude);
   state.health = num('health', state.health);
+  state.wallDistance = num('wall', state.wallDistance);
+  state.wallHeight = num('wallH', state.wallHeight);
   for (const [field, key] of Object.entries(OVERRIDE_KEYS) as [keyof OverrideState, string][]) {
     if (!p.has(key)) continue;
     if (field === 'crownShape') { if (CROWN_SHAPES.includes(p.get(key) as CrownShape)) state.crownShape = p.get(key) as CrownShape; }
@@ -65,6 +75,7 @@ function writeHash(): void {
   const p = new URLSearchParams();
   p.set('species', state.species); p.set('seed', String(state.seed)); p.set('age', String(state.ageYears)); p.set('day', String(state.dayOfYear));
   p.set('lat', String(state.latitude)); p.set('health', String(state.health));
+  if (state.wallDistance > 0) { p.set('wall', String(state.wallDistance)); p.set('wallH', String(state.wallHeight)); }
   const def = speciesDefaults(SPECIES[state.species]);
   for (const [field, key] of Object.entries(OVERRIDE_KEYS) as [keyof OverrideState, string][]) {
     if (state[field] !== def[field]) p.set(key, String(state[field]));
@@ -87,7 +98,8 @@ function individualFromState(): IndividualParams {
   for (const k of ['apicalControl', 'gravitropism', 'phototropism', 'branchingAngle', 'lateralBudProbability'] as const) {
     if (state[k] !== def[k]) ov[k] = state[k];
   }
-  return { seed: state.seed, ageYears: state.ageYears, dayOfYear: state.dayOfYear, latitude: state.latitude, health: state.health, ...(Object.keys(ov).length ? { overrides: ov } : {}) };
+  const obstacles = obstaclesFromState();
+  return { seed: state.seed, ageYears: state.ageYears, dayOfYear: state.dayOfYear, latitude: state.latitude, health: state.health, ...(Object.keys(ov).length ? { overrides: ov } : {}), ...(obstacles ? { obstacles } : {}) };
 }
 
 // ---------------------------------------------------------------------------
@@ -146,6 +158,18 @@ scene.add(ground);
 
 const treeGroup = new THREE.Group();
 scene.add(treeGroup);
+const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xb8b0a4, roughness: 0.95 }));
+wallMesh.castShadow = wallMesh.receiveShadow = true;
+wallMesh.visible = false;
+scene.add(wallMesh);
+function updateWall(): void {
+  const obs = obstaclesFromState();
+  if (!obs || obs[0].kind !== 'box') { wallMesh.visible = false; return; }
+  const b = obs[0];
+  wallMesh.visible = true;
+  wallMesh.scale.set(b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]);
+  wallMesh.position.set((b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2);
+}
 let branchMesh: THREE.Mesh | null = null;
 let leafMesh: THREE.InstancedMesh | null = null;
 let currentModel: PlantModel | null = null;
@@ -212,6 +236,7 @@ function disposeTree(): void {
 
 function setModel(model: PlantModel, reframe: boolean): void {
   disposeTree();
+  updateWall();
   currentModel = model;
   const sp = model.species;
 
@@ -370,6 +395,9 @@ ov.addBinding(state, 'gravitropism', { min: -0.6, max: 0.6, step: 0.01 });
 ov.addBinding(state, 'phototropism', { min: 0, max: 2, step: 0.01 });
 ov.addBinding(state, 'branchingAngle', { min: 10, max: 90, step: 1 });
 ov.addBinding(state, 'lateralBudProbability', { min: 0, max: 1, step: 0.01 });
+const env = pane.addFolder({ title: 'Environment', expanded: false });
+env.addBinding(state, 'wallDistance', { label: 'wall x (0=off)', min: 0, max: 10, step: 0.5 });
+env.addBinding(state, 'wallHeight', { label: 'wall height', min: 1, max: 20, step: 0.5 });
 pane.on('change', requestGenerate);
 
 pane.addButton({ title: 'Randomize seed' }).on('click', () => { state.seed = Math.floor(Math.random() * 1_000_000); pane.refresh(); });

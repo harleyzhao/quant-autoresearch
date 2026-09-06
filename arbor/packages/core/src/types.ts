@@ -126,6 +126,11 @@ export interface SpeciesParams {
   bark: BarkParams;
 }
 
+/** Axis-aligned obstacle in world space (meters). Markers inside are removed, shoots cannot enter, and it casts shade. */
+export type Obstacle =
+  | { kind: 'box'; min: [number, number, number]; max: [number, number, number] }
+  | { kind: 'sphere'; center: [number, number, number]; radius: number };
+
 export interface IndividualParams {
   seed: number;
   /** Age in years. Growth is simulated one year per step. */
@@ -138,6 +143,8 @@ export interface IndividualParams {
   health: number;
   /** Optional overrides applied on top of the species. */
   overrides?: Partial<SpeciesParams> & { crown?: Partial<CrownEnvelope> };
+  /** Environment: walls, buildings, neighbouring crowns. */
+  obstacles?: Obstacle[];
 }
 
 /** Structure-of-arrays skeleton. Node 0 is the root (ground). Parents always precede children. */

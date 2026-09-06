@@ -200,3 +200,24 @@ describe('PlantSession (incremental growth)', () => {
     expect(Array.from(s.build(190, 48).skeleton.position)).toEqual(Array.from(m10.skeleton.position));
   });
 });
+
+describe('environment obstacles', () => {
+  it('a wall keeps branches out and pushes the crown to the other side', () => {
+    const sp = getSpecies('quercus-robur');
+    const wall = { kind: 'box' as const, min: [1.2, 0, -10] as [number, number, number], max: [1.6, 9, 10] as [number, number, number] };
+    const free = generate(sp, ind(7, 22));
+    const walled = generate(sp, { ...ind(7, 22), obstacles: [wall] });
+    const sk = walled.skeleton;
+    let cx = 0, beyond = 0;
+    for (let i = 0; i < sk.count; i++) {
+      const x = sk.position[i * 3], y = sk.position[i * 3 + 1], z = sk.position[i * 3 + 2];
+      expect(x >= wall.min[0] && x <= wall.max[0] && y <= wall.max[1] && z >= wall.min[2] && z <= wall.max[2]).toBe(false);
+      if (x > wall.max[0]) beyond++;
+      cx += x;
+    }
+    cx /= sk.count;
+    let cxFree = 0; for (let i = 0; i < free.skeleton.count; i++) cxFree += free.skeleton.position[i * 3]; cxFree /= free.skeleton.count;
+    expect(cx).toBeLessThan(cxFree - 0.3); // crown centroid shifted away from the wall
+    expect(beyond / sk.count).toBeLessThan(0.05); // almost nothing reaches over/around the wall at this age
+  });
+});

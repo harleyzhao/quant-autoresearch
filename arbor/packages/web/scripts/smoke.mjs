@@ -24,6 +24,7 @@ const cases = [
   { hash: '#species=pinus-sylvestris&seed=3&age=20&day=190', file: 'pine.png' },
   { hash: '#species=betula-pendula&seed=5&age=20&day=290', file: 'birch-autumn.png' },
   { hash: '#species=acer-platanoides&seed=11&age=18&day=284', file: 'maple-autumn.png' },
+  { hash: '#species=quercus-robur&seed=7&age=25&day=190&wall=1.5&wallH=9', file: 'oak-wall.png' },
 ];
 
 function waitForPort(port, timeoutMs = 20_000) {

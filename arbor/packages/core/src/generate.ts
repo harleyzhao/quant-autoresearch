@@ -39,11 +39,11 @@ export class PlantSession {
   private opts: GenerateOptions;
   private skeletonCache: { age: number; skeleton: Skeleton; branches: ReturnType<typeof buildBranchMesh> } | null = null;
 
-  constructor(speciesIn: SpeciesParams, individual: Pick<IndividualParams, 'seed' | 'health' | 'overrides'>, opts: GenerateOptions = {}) {
+  constructor(speciesIn: SpeciesParams, individual: Pick<IndividualParams, 'seed' | 'health' | 'overrides' | 'obstacles'>, opts: GenerateOptions = {}) {
     this.species = resolveSpecies(speciesIn, individual);
     this.seed = individual.seed;
-    this.opts = opts;
-    this.growth = new TreeGrowth(this.species, this.seed, opts.growth);
+    this.opts = individual.obstacles?.length ? { ...opts, growth: { ...opts.growth, obstacles: individual.obstacles } } : opts;
+    this.growth = new TreeGrowth(this.species, this.seed, this.opts.growth);
   }
 
   get age(): number { return this.growth.year; }
