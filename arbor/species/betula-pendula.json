@@ -44,7 +44,17 @@
       0.36,
       0.08
     ],
-    "autumnPigment": "yellow"
+    "autumnPigment": "yellow",
+    "shapeParams": {
+      "aspect": 0.75,
+      "widestAt": 0.3,
+      "base": "truncate",
+      "apex": "acuminate",
+      "serration": {
+        "amplitude": 0.09,
+        "count": 16
+      }
+    }
   },
   "phenology": {
     "budburstGDD": 120,
@@ -61,7 +71,9 @@
       0.84,
       0.8
     ],
-    "roughness": 0.7
+    "roughness": 0.7,
+    "family": "lenticel",
+    "scale": 1.2
   },
   "lateralShootScale": 0.9,
   "axisKink": 0.12,

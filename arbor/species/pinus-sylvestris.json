@@ -61,7 +61,9 @@
       0.28,
       0.16
     ],
-    "roughness": 0.9
+    "roughness": 0.9,
+    "family": "plated",
+    "scale": 1.5
   },
   "lateralShootScale": 0.5,
   "lateralGravitropism": 0.03,

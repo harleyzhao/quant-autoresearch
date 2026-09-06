@@ -11,6 +11,8 @@ export class MarkerField {
   readonly y: Float32Array;
   readonly z: Float32Array;
   readonly alive: Uint8Array;
+  /** Permanently removed markers (e.g. the juvenile zone after canopy closure); never revived by occupancy refreshes. */
+  readonly removed: Uint8Array;
   readonly count: number;
   remaining: number;
   // dense uniform grid over the marker bounding box: head[cell] -> first marker, next[marker] -> next in cell
@@ -27,6 +29,7 @@ export class MarkerField {
     this.y = new Float32Array(this.count);
     this.z = new Float32Array(this.count);
     this.alive = new Uint8Array(this.count).fill(1);
+    this.removed = new Uint8Array(this.count);
     this.remaining = this.count;
     this.cell = cellSize;
     this.inv = 1 / cellSize;
@@ -134,14 +137,30 @@ export class MarkerField {
                 if (dx * dx + dy * dy + dz * dz <= r2) { occupied = true; break outer; }
               }
       }
-      this.alive[m] = occupied ? 0 : 1;
-      if (!occupied) alive++;
+      const free = !occupied && !this.removed[m];
+      this.alive[m] = free ? 1 : 0;
+      if (free) alive++;
     }
     this.remaining = alive;
   }
 
-  /** Mark every marker free again. */
-  resetOccupancy(): void { this.alive.fill(1); this.remaining = this.count; }
+  /** Mark every marker free again (except permanently removed ones). */
+  resetOccupancy(): void {
+    let n = 0;
+    for (let i = 0; i < this.count; i++) { const f = this.removed[i] ? 0 : 1; this.alive[i] = f; n += f; }
+    this.remaining = n;
+  }
+
+  /** Permanently remove every marker for which `pred` is true. */
+  removeWhere(pred: (x: number, y: number, z: number) => boolean): number {
+    let n = 0;
+    for (let i = 0; i < this.count; i++) {
+      if (this.removed[i] || !pred(this.x[i], this.y[i], this.z[i])) continue;
+      this.removed[i] = 1; n++;
+      if (this.alive[i]) { this.alive[i] = 0; this.remaining--; }
+    }
+    return n;
+  }
 
   /** Mark all markers within radius of p as occupied. Returns number newly occupied. */
   consume(px: number, py: number, pz: number, radius: number): number {
@@ -193,7 +212,17 @@ export function insideEnvelope(env: CrownEnvelope, x: number, y: number, z: numb
   }
 }
 
-/** Fill the envelope with jittered-grid markers at a target spacing. */
+/** Radius of the juvenile branching zone around the young trunk below the crown base, at height y. */
+export function juvenileRadius(env: CrownEnvelope, y: number): number {
+  if (y < 0.3 || y >= env.baseHeight) return 0;
+  return Math.min(env.width * 0.25, 0.3 + 0.35 * y);
+}
+
+/**
+ * Fill the envelope with jittered-grid markers at a target spacing. Below the crown base a sparser
+ * juvenile zone lets saplings branch early; the kernel removes it once the leader clears the crown
+ * base (canopy closure), after which those low branches are shaded out and shed.
+ */
 export function generateMarkers(env: CrownEnvelope, spacing: number, rng: Rng): Float32Array {
   const R = env.width * 0.5 + spacing;
   const y0 = env.baseHeight - spacing, y1 = env.baseHeight + env.height + spacing;
@@ -205,6 +234,15 @@ export function generateMarkers(env: CrownEnvelope, spacing: number, rng: Rng): 
         const py = y + (rng.next() - 0.5) * spacing;
         const pz = z + (rng.next() - 0.5) * spacing;
         if (insideEnvelope(env, px, py, pz)) pts.push(px, py, pz);
+      }
+  const js = spacing * 1.4;
+  const RJ = juvenileRadius(env, env.baseHeight - 0.01) + js;
+  for (let x = -RJ; x <= RJ; x += js)
+    for (let y = 0.3; y < env.baseHeight; y += js)
+      for (let z = -RJ; z <= RJ; z += js) {
+        const px = x + (rng.next() - 0.5) * js, py = y + (rng.next() - 0.5) * js, pz = z + (rng.next() - 0.5) * js;
+        const r = juvenileRadius(env, py);
+        if (r > 0 && px * px + pz * pz <= r * r) pts.push(px, py, pz);
       }
   return Float32Array.from(pts);
 }

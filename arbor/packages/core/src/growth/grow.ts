@@ -88,6 +88,7 @@ export class TreeGrowth {
   markers: MarkerField;
   shadow: ShadowGrid;
   year = 0;
+  private juvenileCleared = false;
   /** cumulative ms per phase, for tuning */
   profile = { light: 0, occupancy: 0, perceive: 0, allocate: 0, shoots: 0, shed: 0, secondary: 0, sag: 0 };
   private scratch = new Float32Array(3);
@@ -175,6 +176,17 @@ export class TreeGrowth {
       else this.shadow.addBox([o.center[0] - o.radius, o.center[1] - o.radius, o.center[2] - o.radius], [o.center[0] + o.radius, o.center[1] + o.radius, o.center[2] + o.radius]);
     }
     this.profile.light += TreeGrowth.now() - t; t = TreeGrowth.now();
+
+    // 1a. canopy closure: once the leader is well into the crown, the juvenile zone below the crown base disappears
+    if (!this.juvenileCleared) {
+      let top = 0;
+      for (let i = 0; i < n; i++) if (this.alive[i] && this.order[i] === 0 && this.py[i] > top) top = this.py[i];
+      if (top > sp.crown.baseHeight + Math.min(2, sp.crown.height * 0.15)) {
+        const base = sp.crown.baseHeight;
+        this.markers.removeWhere((_x, y) => y < base);
+        this.juvenileCleared = true;
+      }
+    }
 
     // 1b. dynamic occupancy: space is free again where branches were shed
     const L = sp.internodeLength;

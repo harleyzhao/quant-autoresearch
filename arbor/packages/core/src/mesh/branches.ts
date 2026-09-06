@@ -12,7 +12,7 @@ export interface BranchMeshOptions {
   minSegments?: number;
   /** Nodes with radius below this are skipped (their parent becomes a tip). */
   minRadius?: number;
-  /** Texture repeats per meter of circumference. */
+  /** Texture repeats per meter along the branch (u around the circumference uses the same density, rounded to whole repeats). */
   uvScale?: number;
 }
 
@@ -69,13 +69,15 @@ export function buildBranchMesh(sk: Skeleton, opts: BranchMeshOptions = {}): Bra
     const bx = ty * nz - tz * ny, by = tz * nx - tx * nz, bz = tx * ny - ty * nx;
     const start = pos.length / 3;
     const v = vlen[i] * uvScale;
+    // u spans the circumference in the same metric units as v, so a tiling bark texture is not stretched on thick trunks
+    const uSpan = Math.max(1, Math.round(2 * Math.PI * r * uvScale));
     for (let s = 0; s <= seg; s++) {
       const a = (s / seg) * Math.PI * 2;
       const ca = Math.cos(a), sa = Math.sin(a);
       const ox = nx * ca + bx * sa, oy = ny * ca + by * sa, oz = nz * ca + bz * sa;
       pos.push(cx + ox * r, cy + oy * r, cz + oz * r);
       nrm.push(ox, oy, oz);
-      uv.push(s / seg, v);
+      uv.push((s / seg) * uSpan, v);
     }
     return start;
   };

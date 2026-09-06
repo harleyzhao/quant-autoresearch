@@ -5,7 +5,8 @@
  */
 
 export type CrownShape = 'ellipsoid' | 'sphere' | 'cone' | 'column' | 'spreading' | 'vase';
-export type LeafShape = 'ovate' | 'lanceolate' | 'lobed' | 'palmate' | 'needle';
+export type LeafShape = 'ovate' | 'lanceolate' | 'lobed' | 'palmate' | 'pinnate' | 'needle';
+export type BarkFamily = 'smooth' | 'lenticel' | 'furrowed' | 'plated' | 'fibrous' | 'exfoliating' | 'ridged';
 export type AutumnPigment = 'yellow' | 'orange' | 'red' | 'brown' | 'none';
 
 export interface CrownEnvelope {
@@ -31,6 +32,8 @@ export interface LeafParams {
   /** Summer color, linear RGB 0..1. */
   color: [number, number, number];
   autumnPigment: AutumnPigment;
+  /** Overrides for the procedural silhouette (see organs/leafShape.ts); family is derived from `shape`. */
+  shapeParams?: Partial<import('./organs/leafShape.js').LeafShapeParams>;
 }
 
 export interface PhenologyParams {
@@ -52,6 +55,10 @@ export interface PhenologyParams {
 export interface BarkParams {
   color: [number, number, number];
   roughness: number;
+  /** Procedural bark texture family (docs/plant-gen/04 §3.2). */
+  family?: BarkFamily;
+  /** Texture repeats per meter along the trunk. */
+  scale?: number;
 }
 
 export interface SpeciesParams {

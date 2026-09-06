@@ -12,7 +12,8 @@
     "build": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "metrics": "npx --yes tsx@4 scripts/metrics.ts"
+    "metrics": "npx --yes tsx@4 scripts/metrics.ts",
+    "validate": "npx --yes tsx@4 scripts/validate-species.ts"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

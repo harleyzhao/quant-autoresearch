@@ -44,7 +44,18 @@
       0.3,
       0.06
     ],
-    "autumnPigment": "brown"
+    "autumnPigment": "brown",
+    "shapeParams": {
+      "aspect": 0.62,
+      "widestAt": 0.62,
+      "lobes": {
+        "count": 4,
+        "depth": 0.42,
+        "round": 0.95
+      },
+      "base": "cuneate",
+      "apex": "obtuse"
+    }
   },
   "phenology": {
     "budburstGDD": 190,
@@ -61,7 +72,9 @@
       0.25,
       0.2
     ],
-    "roughness": 0.95
+    "roughness": 0.95,
+    "family": "furrowed",
+    "scale": 1.5
   },
   "lateralShootScale": 0.85,
   "axisKink": 0.15,

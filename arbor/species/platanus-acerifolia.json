@@ -1,0 +1,84 @@
+{
+  "id": "platanus-acerifolia",
+  "name": "London Plane",
+  "latinName": "Platanus × acerifolia",
+  "habit": "broadleaf",
+  "apicalControl": 0.48,
+  "resourceScale": 3.0,
+  "internodeLength": 0.3,
+  "maxShootLength": 0.9,
+  "perceptionAngle": 60,
+  "perceptionDistance": 5,
+  "occupancyRadius": 0.9,
+  "branchingAngle": 50,
+  "phyllotaxis": 137.5,
+  "branchingMode": "alternate",
+  "whorlCount": 0,
+  "lateralBudProbability": 0.45,
+  "budLifespan": 3,
+  "directionInertia": 0.9,
+  "phototropism": 0.9,
+  "gravitropism": 0.1,
+  "noise": 0.35,
+  "maxOrder": 10,
+  "shedThreshold": 0.1,
+  "shedYears": 3,
+  "daVinciExponent": 2.0,
+  "tipRadius": 0.002,
+  "radialGrowthPerYear": 0.0025,
+  "crown": {
+    "shape": "spreading",
+    "height": 18,
+    "width": 18,
+    "baseHeight": 3.5
+  },
+  "leaf": {
+    "shape": "palmate",
+    "length": 0.18,
+    "width": 0.2,
+    "perNode": 3,
+    "maxShootAge": 1,
+    "maxBranchRadius": 0.012,
+    "color": [
+      0.14,
+      0.33,
+      0.08
+    ],
+    "autumnPigment": "brown",
+    "shapeParams": {
+      "aspect": 1.2,
+      "lobes": {
+        "count": 5,
+        "depth": 0.32,
+        "round": 0.2
+      },
+      "serration": {
+        "amplitude": 0.04,
+        "count": 4
+      }
+    }
+  },
+  "phenology": {
+    "budburstGDD": 230,
+    "leafExpandDays": 26,
+    "senescenceDay": 290,
+    "senescenceDays": 30,
+    "abscissionDay": 310,
+    "abscissionDays": 40,
+    "evergreen": false
+  },
+  "bark": {
+    "color": [
+      0.66,
+      0.62,
+      0.52
+    ],
+    "roughness": 0.7,
+    "family": "exfoliating",
+    "scale": 1.0
+  },
+  "lateralShootScale": 0.85,
+  "axisKink": 0.15,
+  "flexibility": 7e-09,
+  "sagMax": 0.4
+}

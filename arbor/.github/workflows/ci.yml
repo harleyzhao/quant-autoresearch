@@ -24,6 +24,7 @@ jobs:
           cache-dependency-path: arbor/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - run: pnpm validate
       - run: pnpm test
       - run: pnpm build
       - name: Realism metrics (job summary)

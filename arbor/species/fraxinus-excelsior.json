@@ -1,0 +1,82 @@
+{
+  "id": "fraxinus-excelsior",
+  "name": "European Ash",
+  "latinName": "Fraxinus excelsior",
+  "habit": "broadleaf",
+  "apicalControl": 0.55,
+  "resourceScale": 2.8,
+  "internodeLength": 0.3,
+  "maxShootLength": 0.8,
+  "perceptionAngle": 58,
+  "perceptionDistance": 5,
+  "occupancyRadius": 0.9,
+  "branchingAngle": 45,
+  "phyllotaxis": 180,
+  "branchingMode": "alternate",
+  "whorlCount": 0,
+  "lateralBudProbability": 0.4,
+  "budLifespan": 3,
+  "directionInertia": 1.0,
+  "phototropism": 0.9,
+  "gravitropism": 0.2,
+  "noise": 0.28,
+  "maxOrder": 10,
+  "shedThreshold": 0.1,
+  "shedYears": 3,
+  "daVinciExponent": 2.0,
+  "tipRadius": 0.002,
+  "radialGrowthPerYear": 0.002,
+  "crown": {
+    "shape": "vase",
+    "height": 17,
+    "width": 13,
+    "baseHeight": 3.0
+  },
+  "leaf": {
+    "shape": "pinnate",
+    "length": 0.28,
+    "width": 0.16,
+    "perNode": 2,
+    "maxShootAge": 1,
+    "maxBranchRadius": 0.012,
+    "color": [
+      0.13,
+      0.33,
+      0.09
+    ],
+    "autumnPigment": "yellow",
+    "shapeParams": {
+      "leaflets": {
+        "count": 11,
+        "aspect": 0.36
+      },
+      "serration": {
+        "amplitude": 0.04,
+        "count": 16
+      }
+    }
+  },
+  "phenology": {
+    "budburstGDD": 260,
+    "leafExpandDays": 24,
+    "senescenceDay": 270,
+    "senescenceDays": 18,
+    "abscissionDay": 280,
+    "abscissionDays": 20,
+    "evergreen": false
+  },
+  "bark": {
+    "color": [
+      0.42,
+      0.4,
+      0.36
+    ],
+    "roughness": 0.9,
+    "family": "ridged",
+    "scale": 1.6
+  },
+  "lateralShootScale": 0.8,
+  "axisKink": 0.1,
+  "flexibility": 6e-09,
+  "sagMax": 0.35
+}

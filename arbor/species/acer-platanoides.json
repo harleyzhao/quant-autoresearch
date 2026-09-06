@@ -28,7 +28,7 @@
   "shedThreshold": 0.1,
   "shedYears": 3,
   "daVinciExponent": 2.0,
-  "tipRadius": 0.0016,
+  "tipRadius": 0.0015,
   "radialGrowthPerYear": 0.002,
   "crown": {
     "shape": "ellipsoid",
@@ -48,7 +48,19 @@
       0.32,
       0.07
     ],
-    "autumnPigment": "orange"
+    "autumnPigment": "orange",
+    "shapeParams": {
+      "aspect": 1.15,
+      "lobes": {
+        "count": 5,
+        "depth": 0.45,
+        "round": 0.1
+      },
+      "serration": {
+        "amplitude": 0.05,
+        "count": 5
+      }
+    }
   },
   "phenology": {
     "budburstGDD": 150,
@@ -65,6 +77,8 @@
       0.32,
       0.28
     ],
-    "roughness": 0.9
+    "roughness": 0.9,
+    "family": "ridged",
+    "scale": 2.0
   }
 }
