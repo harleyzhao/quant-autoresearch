@@ -404,9 +404,12 @@ export class TreeGrowth {
       if (b.order + 1 <= sp.maxOrder) {
         const mode = b.order === 0 ? sp.branchingMode : (sp.lateralBranchingMode ?? sp.branchingMode);
         if (mode === 'alternate') {
-          if (rng.chance(sp.lateralBudProbability)) {
-            b.phase += sp.phyllotaxis * DEG;
-            const kinkIdx = this.addLateralBud(node, gx, gy, gz, b.phase, b.order + 1);
+          const perNode = b.order > 0 ? Math.max(1, Math.round(sp.lateralBudsPerNode ?? 1)) : 1;
+          for (let q = 0; q < perNode; q++) {
+            if (!rng.chance(sp.lateralBudProbability)) continue;
+            if (q === 0) b.phase += sp.phyllotaxis * DEG;
+            const kinkIdx = this.addLateralBud(node, gx, gy, gz, b.phase + q * Math.PI, b.order + 1);
+            if (q > 0) continue;
             // sympodial tendency: the continuing axis kinks away from the new lateral
             const kb = this.buds[kinkIdx];
             gx -= sp.axisKink * kb.dx; gy -= sp.axisKink * kb.dy; gz -= sp.axisKink * kb.dz;

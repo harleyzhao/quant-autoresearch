@@ -24,8 +24,7 @@
     "deadBranchYears": 6,
     "perceptionAngle": 50,
     "occupancyRadius": 1.0,
-    "resourceScale": 2.6,
-    "lateralBranchingMode": "alternate"
+    "resourceScale": 2.6
   },
   "leaf": {
     "shape": "needle",

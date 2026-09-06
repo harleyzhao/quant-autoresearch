@@ -131,8 +131,9 @@ describe('dead wood retention', () => {
   it('shed branches stay as dead wood for deadBranchYears, carry no leaves, then fall', async () => {
     await breathe();
     const sp = getSpecies('pinus-sylvestris');
-    const withDead = generate({ ...sp, deadBranchYears: 6 }, ind(4, 22));
-    const without = generate({ ...sp, deadBranchYears: 0 }, ind(4, 22));
+    // a harsh shedding threshold guarantees some branches die within the test horizon
+    const withDead = generate({ ...sp, shedThreshold: 0.3, shedYears: 2, deadBranchYears: 6 }, ind(4, 22));
+    const without = generate({ ...sp, shedThreshold: 0.3, shedYears: 2, deadBranchYears: 0 }, ind(4, 22));
     let dead = 0; for (let i = 0; i < withDead.skeleton.count; i++) dead += withDead.skeleton.dead[i];
     expect(dead).toBeGreaterThan(0);
     expect(withDead.skeleton.count - dead).toBe(without.skeleton.count); // live structure identical

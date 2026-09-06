@@ -27,7 +27,6 @@
     "shedYears": 4,
     "daVinciExponent": 2.0,
     "tipRadius": 0.0028,
-    "deadBranchYears": 8,
-    "lateralBranchingMode": "alternate"
+    "deadBranchYears": 8
   }
 }

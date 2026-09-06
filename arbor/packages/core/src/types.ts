@@ -94,6 +94,8 @@ export interface SpeciesParams {
   branchingMode: 'alternate' | 'whorled';
   /** Branching mode of lateral axes (order ≥ 1); conifers are whorled on the trunk but pinnate on the branches. Defaults to branchingMode. */
   lateralBranchingMode?: 'alternate' | 'whorled';
+  /** In alternate mode on lateral axes: buds per metamer (2 = pectinate/opposite twigs as on spruce branches). */
+  lateralBudsPerNode?: number;
   whorlCount: number;
   /** Probability a metamer bears a lateral bud. */
   lateralBudProbability: number;
