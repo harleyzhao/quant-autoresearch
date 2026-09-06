@@ -294,7 +294,9 @@ function frameCamera(model: PlantModel): void {
   const h = Math.max(1, model.stats.height);
   const dist = 1.6 * Math.max(h, model.stats.crownWidth, 2);
   controls.target.set(0, h * 0.5, 0);
-  camera.position.set(0.55, 0.28, 1).normalize().multiplyScalar(dist).add(controls.target);
+  // with a wall on +x, look from the -x side so the wall does not hide the tree
+  const side = state.wallDistance > 0 ? -1 : 1;
+  camera.position.set(0.55 * side, 0.28, 1).normalize().multiplyScalar(dist).add(controls.target);
   camera.near = Math.max(0.05, dist / 200);
   camera.far = Math.max(500, dist * 20);
   camera.updateProjectionMatrix();
