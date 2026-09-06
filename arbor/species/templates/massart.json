@@ -17,7 +17,7 @@
     "phototropism": 0.35,
     "gravitropism": 0.15,
     "lateralGravitropism": -0.06,
-    "lateralShootScale": 0.45,
+    "lateralShootScale": 0.55,
     "axisKink": 0.0,
     "flexibility": 1.2e-08,
     "sagMax": 0.45,
@@ -27,6 +27,7 @@
     "shedYears": 4,
     "daVinciExponent": 2.0,
     "tipRadius": 0.0028,
-    "deadBranchYears": 8
+    "deadBranchYears": 8,
+    "lateralBranchingMode": "alternate"
   }
 }

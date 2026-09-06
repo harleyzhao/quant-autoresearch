@@ -402,7 +402,8 @@ export class TreeGrowth {
 
       // lateral buds
       if (b.order + 1 <= sp.maxOrder) {
-        if (sp.branchingMode === 'alternate') {
+        const mode = b.order === 0 ? sp.branchingMode : (sp.lateralBranchingMode ?? sp.branchingMode);
+        if (mode === 'alternate') {
           if (rng.chance(sp.lateralBudProbability)) {
             b.phase += sp.phyllotaxis * DEG;
             const kinkIdx = this.addLateralBud(node, gx, gy, gz, b.phase, b.order + 1);

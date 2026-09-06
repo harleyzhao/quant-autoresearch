@@ -20,7 +20,8 @@ const days = arg('days', '190,275').split(',').map(Number);
 const W = 640, H = 480;
 
 if (!existsSync(join(root, 'dist', 'index.html'))) { console.error('contact-sheet: build first'); process.exit(1); }
-const speciesIds = readdirSync(join(root, '..', '..', 'species')).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, '')).sort();
+const only = arg('species', '').split(',').filter(Boolean);
+const speciesIds = readdirSync(join(root, '..', '..', 'species')).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, '')).filter((id) => !only.length || only.includes(id)).sort();
 
 function waitForPort(port, timeoutMs = 20_000) {
   const start = Date.now();

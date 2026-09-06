@@ -92,6 +92,8 @@ export interface SpeciesParams {
   phyllotaxis: number;
   /** 'alternate' = one lateral bud per metamer; 'whorled' = whorlCount buds at each shoot end (conifers). */
   branchingMode: 'alternate' | 'whorled';
+  /** Branching mode of lateral axes (order ≥ 1); conifers are whorled on the trunk but pinnate on the branches. Defaults to branchingMode. */
+  lateralBranchingMode?: 'alternate' | 'whorled';
   whorlCount: number;
   /** Probability a metamer bears a lateral bud. */
   lateralBudProbability: number;
